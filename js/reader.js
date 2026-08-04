@@ -94,6 +94,8 @@
       this._txtScroll = null;
       this._txtSelHandler = null;
       this._hlList = [];
+      this._hlNeedsReflow = false;
+      this._hlReflowTimer = null;
     }
 
     /* ================= 打开 ================= */
@@ -135,6 +137,9 @@
       this._bindRendition();
       this._applyAppearance();
       await this.rendition.display(cfi || undefined);
+
+      // 打开时首屏布局/字体可能未稳定，标记以在稳定后重绘高亮避免错位
+      this._hlNeedsReflow = true;
 
       // 位置生成放后台，不阻塞首次渲染
       this._generateLocations();
@@ -1061,6 +1066,32 @@
       } else if (this.mode === 'txt') {
         this._hlList.forEach((h) => this._applyTxtHighlight(h.cfi, h.color));
       }
+      // 打开/字体/布局变化场景：首屏布局可能未稳定，延迟重绘一次修正高亮位置
+      if (this._hlNeedsReflow) {
+        this._hlNeedsReflow = false;
+        this._scheduleHlReflow();
+      }
+    }
+
+    /** 布局/字体稳定后重绘高亮，修正首次渲染或字体加载导致的位置偏差 */
+    _scheduleHlReflow() {
+      if (this.mode !== 'epub' || !this.rendition) return;
+      clearTimeout(this._hlReflowTimer);
+      this._hlReflowTimer = setTimeout(() => {
+        this._hlReflowTimer = null;
+        // 等待字体就绪（外层文档 + 各 iframe 内文档）
+        const docs = [document];
+        try {
+          this.rendition.getContents().forEach((c) => { if (c && c.document) docs.push(c.document); });
+        } catch (_) {}
+        const waits = docs.map((d) => (d.fonts && d.fonts.ready) ? d.fonts.ready.catch(() => {}) : Promise.resolve());
+        Promise.all(waits).then(() => {
+          requestAnimationFrame(() => requestAnimationFrame(() => {
+            if (this.mode !== 'epub' || !this.rendition || !this._hlList.length) return;
+            this._applyHls();
+          }));
+        });
+      }, 180);
     }
 
     _applyTxtHighlight(cfi, color) {
@@ -1212,7 +1243,8 @@
       }
       if (this.rendition) {
         try { this.rendition.themes.fontSize(px + 'px'); } catch (_) {}
-        // 布局变化后重画高亮，避免色块错位
+        // 布局变化后重画高亮，避免色块错位；字体/布局稳定后再次修正
+        this._hlNeedsReflow = true;
         this._applyHls();
       }
     }
@@ -1225,6 +1257,7 @@
       }
       if (this.rendition) {
         try { this.rendition.themes.override('line-height', String(lh)); } catch (_) {}
+        this._hlNeedsReflow = true;
         this._applyHls();
       }
     }
@@ -1241,6 +1274,7 @@
       }
       if (this.rendition) {
         this._applyEpubMargin();
+        this._hlNeedsReflow = true;
         this._applyHls(); // 留白变化后重画高亮
       }
     }
@@ -1257,6 +1291,7 @@
           if (res && res.url) this._applyEpubFont();
           else if (res) this.rendition.themes.font(res.family);
         } catch (_) {}
+        this._hlNeedsReflow = true; // 自定义字体异步加载会导致布局重排
         this._applyHls(); // 字体变化后重画高亮
       }
     }
@@ -1318,6 +1353,8 @@
       this._pdfScroll = null;
       this._txtSelHandler = null;
       this._hlList = [];
+      if (this._hlReflowTimer) { clearTimeout(this._hlReflowTimer); this._hlReflowTimer = null; }
+      this._hlNeedsReflow = false;
       this.currentCfi = null;
     }
   }
