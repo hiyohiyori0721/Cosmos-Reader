@@ -1,5 +1,5 @@
 {
-  "name": "reader",
+  "name": "cosmos-reader",
   "version": "1.0.0",
   "description": "一个开箱即用的**纯前端** EPUB 电子书阅读器。无需安装任何依赖，双击 `index.html` 即可在浏览器中阅读本地 EPUB 文件。",
   "main": "server.js",

@@ -1,4 +1,4 @@
-# 📖 EPUB 阅读器
+# 📖 Cosmos-Reader
 
 一个**功能完整、开箱即用**的纯前端电子书阅读器。无需后端，支持 **EPUB / TXT / PDF** 三种格式与 **ZIP 压缩包自动识别**，可一键打包为 **Android APK**。
 

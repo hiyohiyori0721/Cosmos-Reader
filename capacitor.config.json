@@ -1,6 +1,6 @@
 {
   "appId": "com.epub.reader",
-  "appName": "EPUBReader",
+  "appName": "Cosmos-Reader",
   "webDir": "www",
   "server": {
     "androidScheme": "https"

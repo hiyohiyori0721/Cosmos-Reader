@@ -39,7 +39,7 @@ Add-ZipEntry 'OEBPS/content.opf' @'
 <package xmlns="http://www.idpf.org/2007/opf" version="3.0" unique-identifier="book-id" xml:lang="zh-CN">
   <metadata xmlns:dc="http://purl.org/dc/elements/1.1/">
     <dc:identifier id="book-id">urn:uuid:sample-001</dc:identifier>
-    <dc:title>测试书籍 · EPUB 阅读器</dc:title>
+    <dc:title>测试书籍 · Cosmos-Reader</dc:title>
     <dc:creator>示例作者</dc:creator>
     <dc:language>zh-CN</dc:language>
     <meta property="dcterms:modified">2024-01-01T00:00:00Z</meta>
@@ -130,7 +130,7 @@ Add-ZipEntry 'OEBPS/chapter3.xhtml' @'
 <head><title>第三章</title><link rel="stylesheet" type="text/css" href="style.css"/></head>
 <body>
 <h1>第三章 结束</h1>
-<p>至此，这本测试书籍的正文已经接近尾声。感谢你耐心阅读这些测试文本，它们被精心安排，用于验证 EPUB 阅读器的各种功能。</p>
+<p>至此，这本测试书籍的正文已经接近尾声。感谢你耐心阅读这些测试文本，它们被精心安排，用于验证 Cosmos-Reader 的各种功能。</p>
 <p>外观设置允许你自由调整字号大小、行距、字体与主题配色。白天模式明亮清爽，护眼模式柔和温暖，夜间模式则适合在暗光环境下阅读，减少对眼睛的刺激。</p>
 <p>支持两种阅读模式：分页模式类似传统书籍，一屏一页，左右点击翻页；连续滚动模式则像网页一样平滑滚动，适合快速浏览长文。你可以根据喜好自由切换。</p>
 <p>如果这一切都运行正常，那么恭喜你，这款 EPUB 电子书阅读器已经可以投入使用。希望它能成为你日常阅读的好帮手。再见！</p>

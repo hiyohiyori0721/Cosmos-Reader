@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">EPUB阅读器</string>
-    <string name="title_activity_main">EPUB阅读器</string>
+    <string name="app_name">Cosmos-Reader</string>
+    <string name="title_activity_main">Cosmos-Reader</string>
     <string name="package_name">com.epub.reader</string>
     <string name="custom_url_scheme">com.epub.reader</string>
 </resources>
