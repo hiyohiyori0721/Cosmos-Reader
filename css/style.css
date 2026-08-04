@@ -700,6 +700,18 @@ select {
 .bi-label { flex: 0 0 64px; color: var(--text-dim); }
 .bi-value { flex: 1; color: var(--text); word-break: break-all; }
 
+/* 关于弹窗 */
+.about-body { text-align: center; padding: 4px 8px 8px; }
+.about-logo { font-size: 44px; line-height: 1; margin-bottom: 8px; }
+.about-name { font-size: 20px; font-weight: 800; color: var(--text); }
+.about-version { font-size: 13px; color: var(--text-dim); margin: 4px 0 10px; }
+.about-desc { font-size: 13px; color: var(--text-dim); line-height: 1.7; margin: 0 0 12px; }
+.about-section { text-align: left; margin-bottom: 10px; }
+.about-sec-title { font-size: 12px; font-weight: 600; color: var(--text-dim); margin-bottom: 4px; }
+.about-item { font-size: 14px; color: var(--text); line-height: 1.6; }
+.about-link { display: inline-block; font-size: 14px; color: var(--accent); text-decoration: none; }
+.about-link:hover { text-decoration: underline; }
+
 /* 长按卡片操作菜单（底部弹出） */
 .modal-mask.bottom { align-items: flex-end; padding: 0; }
 .sheet {
