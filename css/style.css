@@ -328,6 +328,20 @@ input, select { font-family: inherit; }
 .swatch.sepia { background: #f2e8d5; }
 .swatch.dark { background: #1c1c1e; }
 
+/* 自定义背景 / 文字颜色 */
+.color-row { display: flex; align-items: center; gap: 10px; }
+.color-row input[type="color"] {
+  width: 46px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: transparent;
+  cursor: pointer;
+}
+.color-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
+.color-row input[type="color"]::-webkit-color-swatch { border: none; border-radius: 6px; }
+
 input[type="range"] {
   width: 100%;
   accent-color: var(--accent);

@@ -1152,6 +1152,7 @@
       content.style.paddingRight = margin + 'vw';
       const res = this._resolveFont(s.fontFamily);
       content.style.fontFamily = res ? res.family : '';
+      this._applyCustomColors();
     }
 
     _applyAppearance() {
@@ -1183,6 +1184,51 @@
         this._applyEpubFont();
       } else if (res) {
         try { themes.font(res.family); } catch (_) {}
+      }
+      this._applyCustomColors();
+    }
+
+    /** 应用自定义背景与文字颜色（覆盖当前主题对应色；阅读界面；清空即恢复主题） */
+    _applyCustomColors() {
+      const bg = this.settings.customBg;
+      const text = this.settings.customText;
+      if (this.mode === 'epub' && this.el) {
+        // 向各 iframe 注入/更新独立 style（可控，避免 epub.js override 累积）
+        const css = (bg ? 'body{background:' + bg + ' !important;}' : '')
+          + (text ? 'body{color:' + text + ' !important;}' : '');
+        this.el.querySelectorAll('iframe').forEach((iframe) => {
+          const doc = iframe.contentDocument;
+          if (!doc || !doc.head) return;
+          let style = doc.getElementById('reader-custom-colors');
+          if (css) {
+            if (!style) {
+              style = doc.createElement('style');
+              style.id = 'reader-custom-colors';
+              doc.head.appendChild(style);
+            }
+            style.textContent = css;
+          } else if (style) {
+            style.remove();
+          }
+        });
+      } else if (this.mode === 'txt' && this.txt) {
+        if (bg) this.txt.container.style.background = bg;
+        else this.txt.container.style.background = '';
+        if (text) this.txt.container.style.color = text;
+        else this.txt.container.style.color = '';
+      }
+    }
+
+    /** 设置自定义主题色（阅读时调用；清空传 null） */
+    setCustomTheme(bg, text) {
+      this.settings.customBg = bg || null;
+      this.settings.customText = text || null;
+      if (this.mode === 'txt' && this.txt) {
+        this._applyTxtAppearance();
+      } else if (this.mode === 'epub') {
+        this._applyAppearance();
+      } else {
+        this._applyCustomColors();
       }
     }
 

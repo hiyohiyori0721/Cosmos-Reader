@@ -35,6 +35,10 @@
     searchInput: $('search-input'),
     searchResults: $('search-results'),
     settingsPanel: $('settings-panel'),
+    customBgInput: $('custom-bg-input'),
+    customTextInput: $('custom-text-input'),
+    btnBgReset: $('btn-bg-reset'),
+    btnTextReset: $('btn-text-reset'),
     fontSizeRange: $('font-size-range'),
     fontSizeVal: $('font-size-val'),
     lineHeightRange: $('line-height-range'),
@@ -1360,6 +1364,8 @@
     els.fontFamilySelect.value = els.fontFamilySelect.querySelector('option[value="' + s.fontFamily + '"]') ? s.fontFamily : 'default';
     els.flowSelect.value = s.flow;
     els.volumeKeyToggle.checked = !!s.volumeKeyTurn;
+    els.customBgInput.value = s.customBg || '#ffffff';
+    els.customTextInput.value = s.customText || '#2c2c2c';
     document.querySelectorAll('.theme-btn').forEach((b) => {
       b.classList.toggle('active', b.dataset.theme === s.theme);
     });
@@ -1369,6 +1375,14 @@
     document.body.className = 'theme-' + theme;
     if (reader) reader.setTheme(theme);
     Storage.setSettings({ theme });
+  }
+
+  /** 应用自定义背景/文字颜色（设置面板颜色选择器） */
+  function applyCustomTheme() {
+    const s = Storage.getSettings();
+    els.customBgInput.value = s.customBg || '#ffffff';
+    els.customTextInput.value = s.customText || '#2c2c2c';
+    if (reader) { try { reader.setCustomTheme(s.customBg, s.customText); } catch (_) {} }
   }
 
   /* ================= 拖拽 ================= */
@@ -1407,6 +1421,8 @@
     els.fontFamilySelect.value = els.fontFamilySelect.querySelector('option[value="' + s.fontFamily + '"]') ? s.fontFamily : 'default';
     els.flowSelect.value = s.flow;
     els.volumeKeyToggle.checked = !!s.volumeKeyTurn;
+    els.customBgInput.value = s.customBg || '#ffffff';
+    els.customTextInput.value = s.customText || '#2c2c2c';
     document.querySelectorAll('.theme-btn').forEach((b) => {
       b.classList.toggle('active', b.dataset.theme === s.theme);
     });
@@ -1648,6 +1664,26 @@
         applyTheme(btn.dataset.theme);
         syncSettingsUI();
       });
+    });
+
+    /* 自定义背景 / 自定义文字颜色 */
+    els.customBgInput.addEventListener('change', () => {
+      Storage.setSettings({ customBg: els.customBgInput.value || null });
+      applyCustomTheme();
+    });
+    els.customTextInput.addEventListener('change', () => {
+      Storage.setSettings({ customText: els.customTextInput.value || null });
+      applyCustomTheme();
+    });
+    els.btnBgReset.addEventListener('click', () => {
+      Storage.setSettings({ customBg: null });
+      els.customBgInput.value = '#ffffff';
+      applyCustomTheme();
+    });
+    els.btnTextReset.addEventListener('click', () => {
+      Storage.setSettings({ customText: null });
+      els.customTextInput.value = '#2c2c2c';
+      applyCustomTheme();
     });
 
     /* 快捷键 */

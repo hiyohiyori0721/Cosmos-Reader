@@ -259,6 +259,8 @@
           margin: 4,
           volumeKeyTurn: true,
           bookSort: 'recent',
+          customBg: null,
+          customText: null,
         },
         lsGet(LS_SETTINGS, {})
       );
