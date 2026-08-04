@@ -1034,6 +1034,9 @@
     // 恢复设置 UI 状态
     syncSettingsUI();
     showToast('正在阅读');
+
+    // 5 秒后自动进入沉浸模式
+    scheduleAutoHide();
   }
 
   function onProgress({ cfi, percent }) {
@@ -1052,24 +1055,40 @@
     // 可选：顶部显示章节名
   }
 
+  /** 自动进入沉浸模式的计时器 */
+  let autoHideTimer = null;
+
+  /** 5 秒后自动进入沉浸模式（仍在阅读、未沉浸、且无面板打开时） */
+  function scheduleAutoHide() {
+    clearTimeout(autoHideTimer);
+    autoHideTimer = setTimeout(() => {
+      autoHideTimer = null;
+      if (els.readerWrap.classList.contains('hidden')) return;      // 已退出阅读
+      if (document.body.classList.contains('bars-hidden')) return;   // 已沉浸
+      const panelOpen = ['panelToc', 'panelBookmarks', 'searchPanel', 'settingsPanel']
+        .some((k) => !els[k].classList.contains('hidden'));
+      if (panelOpen) { scheduleAutoHide(); return; }                 // 面板打开中，稍后再试
+      toggleBars();                                                  // 自动进入沉浸
+    }, 5000);
+  }
+
   /** 切换沉浸模式：收起/展开顶部工具栏与底部翻页栏 */
   function toggleBars() {
     const hidden = document.body.classList.toggle('bars-hidden');
-    // 进入沉浸模式时关闭所有面板（搜索/目录/书签/设置），避免面板悬空错位
-    if (hidden) closeAllPanels();
-    // 立即按目标尺寸重排，与上下栏过渡动画同步，避免先空白后跳变
-    const readerEl = document.getElementById('reader');
-    const w = readerEl ? readerEl.clientWidth : window.innerWidth;
-    const topbarH = 56;
-    const navH = 60;
-    const h = hidden ? window.innerHeight : window.innerHeight - topbarH - navH;
-    if (reader) {
-      try { reader.resize(w, h); } catch (_) {}
+    if (hidden) {
+      // 进入沉浸：清除自动隐藏计时器，并关闭所有面板（避免面板悬空错位）
+      if (autoHideTimer) { clearTimeout(autoHideTimer); autoHideTimer = null; }
+      closeAllPanels();
+    } else {
+      // 展开上下栏后 5 秒自动再次进入沉浸
+      scheduleAutoHide();
     }
+    // 阅读区全屏，上下栏悬浮覆盖其上，切换时无需重新排版
   }
 
   function backToLibrary() {
     document.body.classList.remove('bars-hidden');
+    if (autoHideTimer) { clearTimeout(autoHideTimer); autoHideTimer = null; }
     if (reader) { try { reader.destroy(); } catch (_) {} }
     reader = null;
     currentBookId = null;

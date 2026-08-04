@@ -60,7 +60,9 @@ input, select { font-family: inherit; }
   justify-content: space-between;
   gap: 12px;
   padding: 0 16px;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-bottom: 1px solid var(--border);
   z-index: 50;
   transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
@@ -102,7 +104,7 @@ input, select { font-family: inherit; }
 /* ============ 阅读区 ============ */
 .reader-wrap {
   position: fixed;
-  top: var(--topbar-h);
+  top: 0;
   left: 0; right: 0; bottom: 0;
   z-index: 10;
   display: flex;
@@ -1170,16 +1172,18 @@ body.bars-hidden .reader-status { bottom: 14px; }
 .battery-fill.low { background: #e05b5b; }
 .battery-text { font-size: 12px; line-height: 1; }
 
-/* 底部翻页栏：作为阅读区固定底栏，不悬浮、不遮挡内容 */
+/* 底部翻页栏：悬浮覆盖在阅读内容之上，不占布局空间 */
 .page-nav {
-  position: relative;
-  flex: none;
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 4px;
   padding: 8px 16px;
-  background: var(--surface);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   border-top: 1px solid var(--border);
   box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.06);
   user-select: none;
