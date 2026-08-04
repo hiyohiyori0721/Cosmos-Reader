@@ -1671,6 +1671,14 @@
       }
     });
 
+    /* 音量键翻页（Android：原生 MainActivity 拦截音量键后触发的事件） */
+    document.addEventListener('volumeUp', () => {
+      if (Storage.getSettings().volumeKeyTurn) { reader && reader.next(); }
+    });
+    document.addEventListener('volumeDown', () => {
+      if (Storage.getSettings().volumeKeyTurn) { reader && reader.prev(); }
+    });
+
     // 窗口尺寸变化由 reader 内部处理
   }
 
