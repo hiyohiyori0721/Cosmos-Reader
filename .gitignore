@@ -1,0 +1,48 @@
+# 依赖
+node_modules/
+
+# Python 虚拟环境
+.venv/
+
+# 构建工具链（JDK / Android SDK，体积约 1GB，勿提交）
+.buildtools/
+
+# Android 构建产物
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+android/capacitor-cordova-android-plugins/build/
+
+# Capacitor 生成的 Web 副本与配置
+www/
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+
+# APK 产物（请用 GitHub Releases 发布）
+*.apk
+
+# 测试生成的样例文件（可通过 test/make_test_*.py 重新生成）
+test/sample.*
+test/sample-*
+test/说明.md
+test/README-ignore.txt
+
+# 用户导入的书籍 / 字体文件（可能有版权，勿提交）
+*.epub
+*.pdf
+*.ttf
+*.otf
+*.woff
+*.woff2
+
+# 日志 / 临时 / 系统文件
+*.log
+*.tmp
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.idea/
+.vscode/

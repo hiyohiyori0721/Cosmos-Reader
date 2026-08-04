@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>EPUB 阅读器</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- 顶部工具栏（阅读模式） -->
+  <header id="topbar" class="topbar hidden">
+    <div class="topbar-left">
+      <button id="btn-back" class="icon-btn" title="返回书库" aria-label="返回书库">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.41 16.59 10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+      </button>
+      <div id="book-title" class="book-title">未命名</div>
+      <div id="book-author" class="book-author"></div>
+    </div>
+    <div class="topbar-right">
+      <button id="btn-search" class="icon-btn" title="搜索 (Ctrl+F)" aria-label="搜索">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+      </button>
+      <button id="btn-toc" class="icon-btn" title="目录" aria-label="目录">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 13h2v-2H3zm0 4h2v-2H3zm0-8h2V7H3zm4 4h14v-2H7zm0 4h14v-2H7zM7 7v2h14V7z"/></svg>
+      </button>
+      <button id="btn-bookmarks" class="icon-btn" title="书签与笔记" aria-label="书签与笔记">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/></svg>
+      </button>
+      <button id="btn-settings" class="icon-btn" title="外观设置" aria-label="外观设置">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19.14 12.94a7.5 7.5 0 0 0 .06-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.3 7.3 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.43h-3.84a.5.5 0 0 0-.5.43l-.36 2.54c-.58.24-1.12.56-1.62.94l-2.39-.96a.5.5 0 0 0-.6.22L2.65 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.5 7.5 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.23.39.33.6.22l2.39-.96c.5.38 1.04.7 1.62.94l.36 2.54c.04.24.25.43.5.43h3.84c.25 0 .46-.19.5-.43l.36-2.54c.58-.24 1.12-.56 1.62-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64zM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5z"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- 阅读区 -->
+  <main id="reader-wrap" class="reader-wrap hidden">
+    <div id="reader"></div>
+    <!-- 划线操作条（选中文本后显示） -->
+    <div id="hl-bar" class="hl-bar hidden">
+      <span class="hl-hint">划线</span>
+      <button class="hl-color" data-color="yellow" aria-label="黄色">🟡</button>
+      <button class="hl-color" data-color="green" aria-label="绿色">🟢</button>
+      <button class="hl-color" data-color="blue" aria-label="蓝色">🔵</button>
+      <button id="hl-clear" class="hl-clear" aria-label="清除划线" title="清除划线">🚫</button>
+      <button id="hl-cancel" class="hl-cancel" aria-label="取消">✕</button>
+    </div>
+    <!-- 阅读状态（时间 / 电量） -->
+    <div id="reader-status" class="reader-status hidden">
+      <span id="status-time">--:--</span>
+      <span id="status-battery" class="status-battery">
+        <span class="battery-shell">
+          <span class="battery-cap"></span>
+          <span id="battery-fill" class="battery-fill"></span>
+        </span>
+        <span id="battery-text" class="battery-text">--</span>
+      </span>
+    </div>
+    <!-- 底部翻页栏（触摸友好） -->
+    <nav id="page-nav" class="page-nav" aria-label="翻页">
+      <button id="btn-prev" class="page-nav-btn" title="上一页 (←)" aria-label="上一页">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+        <span>上一页</span>
+      </button>
+      <span id="progress-text" class="page-nav-progress">0%</span>
+      <button id="btn-next" class="page-nav-btn" title="下一页 (→)" aria-label="下一页">
+        <span>下一页</span>
+        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
+      </button>
+    </nav>
+  </main>
+
+  <!-- 左侧边栏：目录 -->
+  <aside id="panel-toc" class="side-panel left hidden">
+    <div class="panel-header">
+      <span>目录</span>
+      <button class="icon-btn panel-close" data-close="panel-toc" aria-label="关闭">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div id="toc-list" class="panel-body toc-list"></div>
+  </aside>
+
+  <!-- 右侧边栏：书签与笔记 -->
+  <aside id="panel-bookmarks" class="side-panel right hidden">
+    <div class="panel-header">
+      <span>书签与笔记</span>
+      <button class="icon-btn panel-close" data-close="panel-bookmarks" aria-label="关闭">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div class="panel-body">
+      <button id="btn-add-bookmark" class="action-btn">＋ 在当前页添加书签</button>
+      <div id="bookmark-list" class="bookmark-list"></div>
+    </div>
+  </aside>
+
+  <!-- 搜索面板 -->
+  <div id="search-panel" class="search-panel hidden">
+    <div class="search-box">
+      <input id="search-input" type="text" placeholder="搜索书中内容…" autocomplete="off" />
+      <button id="btn-search-go" class="icon-btn" aria-label="搜索">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
+      </button>
+      <button id="btn-search-close" class="icon-btn" aria-label="关闭搜索">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div id="search-results" class="search-results"></div>
+  </div>
+
+  <!-- 设置面板遮罩（点击关闭） -->
+  <div id="settings-mask" class="settings-mask hidden"></div>
+
+  <!-- 设置面板 -->
+  <div id="settings-panel" class="settings-panel hidden">
+    <div class="panel-header">
+      <span>外观设置</span>
+      <button class="icon-btn panel-close" data-close="settings-panel" aria-label="关闭">
+        <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
+      </button>
+    </div>
+    <div class="settings-body">
+      <div class="setting-group">
+        <label>主题</label>
+        <div class="theme-options">
+          <button class="theme-btn" data-theme="light" title="白天"><span class="swatch light"></span></button>
+          <button class="theme-btn" data-theme="sepia" title="护眼"><span class="swatch sepia"></span></button>
+          <button class="theme-btn" data-theme="dark" title="夜间"><span class="swatch dark"></span></button>
+        </div>
+      </div>
+      <div class="setting-group">
+        <label>字号 <span id="font-size-val" class="setting-val"></span></label>
+        <input id="font-size-range" type="range" min="12" max="32" step="1" value="18" />
+      </div>
+      <div class="setting-group">
+        <label>行距 <span id="line-height-val" class="setting-val"></span></label>
+        <input id="line-height-range" type="range" min="1.2" max="2.6" step="0.1" value="1.8" />
+      </div>
+      <div class="setting-group">
+        <label>左右留白 <span id="margin-val" class="setting-val"></span></label>
+        <input id="margin-range" type="range" min="0" max="20" step="1" value="4" />
+      </div>
+      <div class="setting-group">
+        <label>字体</label>
+        <select id="font-family-select">
+          <option value="serif">衬线（宋体类）</option>
+          <option value="sans-serif">无衬线（黑体类）</option>
+          <option value="default">跟随书籍</option>
+        </select>
+      </div>
+      <div class="setting-group">
+        <label>自定义字体</label>
+        <button id="btn-import-font" class="ghost-btn small" type="button">＋ 导入字体</button>
+        <input id="font-file-input" type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" hidden />
+        <div id="custom-font-list" class="custom-font-list"></div>
+        <p class="font-tip">支持 TTF / OTF / WOFF / WOFF2，导入后在「字体」中选择使用</p>
+      </div>
+      <div class="setting-group">
+        <label>阅读模式</label>
+        <select id="flow-select">
+          <option value="paginated">分页</option>
+          <option value="scrolled">连续滚动</option>
+        </select>
+      </div>
+      <div class="setting-group setting-switch">
+        <label for="volume-key-toggle">音量键翻页</label>
+        <input id="volume-key-toggle" type="checkbox" />
+      </div>
+      <div class="setting-group">
+        <label>数据备份</label>
+        <div class="backup-actions">
+          <button id="btn-export-backup" class="ghost-btn small">导出备份</button>
+          <button id="btn-import-backup" class="ghost-btn small">导入备份</button>
+          <input id="backup-file-input" type="file" accept=".json,application/json" hidden />
+        </div>
+        <p class="font-tip">备份书库信息、进度、书签与设置（不含书籍文件，导入后需重新导入书籍）</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 书籍库视图 -->
+  <div id="library-view" class="library-view">
+    <div class="library-header">
+      <div class="library-title">
+        <svg viewBox="0 0 24 24" width="30" height="30"><path fill="currentColor" d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10zm-4 4H9v-2h6zm4-8H9V5h10z"/></svg>
+        <h1>我的书库</h1>
+      </div>
+      <div class="library-actions">
+        <button id="btn-library-settings" class="ghost-btn small" title="设置" aria-label="设置">
+          <span class="sort-icon">⚙</span> 设置
+        </button>
+        <button id="btn-sort" class="ghost-btn small" title="排序方式" aria-label="排序方式">
+          <span class="sort-icon">⇅</span> 排序
+        </button>
+        <button id="btn-select" class="ghost-btn small" title="多选" aria-label="多选">
+          <span class="sort-icon">☑</span> 多选
+        </button>
+        <input id="file-input" type="file" accept=".epub,.txt,.pdf,.zip,application/epub+zip,text/plain,application/pdf,application/zip" hidden />
+      </div>
+    </div>
+    <!-- 文件夹详情导航（进入文件夹后显示） -->
+    <div id="folder-nav" class="folder-nav hidden">
+      <button id="btn-folder-back" class="icon-btn" title="返回书库" aria-label="返回书库">
+        <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.41 16.59 10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
+      </button>
+      <span id="folder-name" class="folder-name"></span>
+      <div class="folder-nav-actions">
+        <button id="btn-folder-import" class="ghost-btn small">导入到此</button>
+        <button id="btn-folder-rename" class="ghost-btn small">重命名</button>
+        <button id="btn-folder-delete" class="ghost-btn small danger">删除</button>
+      </div>
+    </div>
+    <!-- 文件夹条（书库主页显示） -->
+    <div id="folder-bar" class="folder-bar"></div>
+    <div id="book-grid" class="book-grid"></div>
+    <div id="empty-hint" class="empty-hint hidden">
+      <div class="empty-icon">📚</div>
+      <p>书库还是空的</p>
+      <p class="empty-sub">点击右下角「＋」导入 epub / txt 小说</p>
+    </div>
+  </div>
+
+  <!-- 多选批量操作栏 -->
+  <div id="select-bar" class="select-bar hidden">
+    <span id="select-count" class="select-count">已选 0 本</span>
+    <button id="select-move" class="select-btn" title="移动到文件夹">📁 移动</button>
+    <button id="select-delete" class="select-btn danger" title="批量删除">🗑 删除</button>
+    <button id="select-all" class="select-btn">全选</button>
+    <button id="select-cancel" class="select-btn">取消</button>
+  </div>
+
+  <!-- 右下角悬浮操作按钮（新建文件夹 / 导入小说） -->
+  <div id="fab-wrap" class="fab-wrap">
+    <div id="fab-actions" class="fab-actions">
+      <button id="fab-new-folder" class="fab-action">
+        <span class="fab-action-icon">📁</span> 新建文件夹
+      </button>
+      <button id="fab-import" class="fab-action">
+        <span class="fab-action-icon">📥</span> 导入小说
+      </button>
+    </div>
+    <button id="fab-main" class="fab-main" aria-label="添加">＋</button>
+  </div>
+
+  <!-- 移动书籍到文件夹弹窗 -->
+  <div id="move-modal" class="modal-mask hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <span>移动到文件夹</span>
+        <button id="btn-move-close" class="icon-btn" aria-label="关闭">✕</button>
+      </div>
+      <div id="move-list" class="move-list"></div>
+    </div>
+  </div>
+
+  <!-- 文本输入弹窗（WebView 不支持 prompt，自建输入框） -->
+  <div id="input-modal" class="modal-mask hidden">
+    <div class="modal">
+      <div class="modal-header">
+        <span id="input-modal-title">输入</span>
+        <button id="btn-input-close" class="icon-btn" aria-label="关闭">✕</button>
+      </div>
+      <input id="input-modal-field" class="modal-input" type="text" maxlength="40" placeholder="请输入名称" />
+      <div class="modal-actions">
+        <button id="btn-input-cancel" class="ghost-btn small">取消</button>
+        <button id="btn-input-ok" class="primary-btn small">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 确认弹窗（WebView 不支持 confirm，自建确认框） -->
+  <div id="confirm-modal" class="modal-mask hidden">
+    <div class="modal">
+      <div class="modal-header"><span>提示</span></div>
+      <div id="confirm-modal-text" class="confirm-text"></div>
+      <div class="modal-actions">
+        <button id="btn-confirm-cancel" class="ghost-btn small">取消</button>
+        <button id="btn-confirm-ok" class="primary-btn small danger">确定</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 长按卡片操作菜单（预览 / 移动 / 删除） -->
+  <div id="card-menu" class="modal-mask bottom hidden">
+    <div class="sheet">
+      <div id="card-menu-title" class="sheet-title"></div>
+      <button id="card-menu-info" class="sheet-item">
+        <span class="sheet-icon">ℹ️</span> 预览信息
+      </button>
+      <button id="card-menu-move" class="sheet-item">
+        <span class="sheet-icon">📁</span> 移动到文件夹
+      </button>
+      <button id="card-menu-delete" class="sheet-item danger">
+        <span class="sheet-icon">🗑</span> 删除小说
+      </button>
+      <button id="card-menu-cancel" class="sheet-item">取消</button>
+    </div>
+  </div>
+
+  <!-- 书籍信息预览弹窗 -->
+  <div id="book-info-modal" class="modal-mask hidden">
+    <div class="modal book-info-modal">
+      <div class="modal-header">
+        <span>小说信息</span>
+        <button id="btn-info-close" class="icon-btn" aria-label="关闭">✕</button>
+      </div>
+      <div class="book-info-body">
+        <div id="book-info-cover" class="book-info-cover"></div>
+        <div class="book-info-fields">
+          <div class="book-info-row"><span class="bi-label">书名</span><span id="bi-title" class="bi-value"></span></div>
+          <div class="book-info-row"><span class="bi-label">作者</span><span id="bi-author" class="bi-value"></span></div>
+          <div class="book-info-row"><span class="bi-label">类型</span><span id="bi-type" class="bi-value"></span></div>
+          <div class="book-info-row"><span class="bi-label">大小</span><span id="bi-size" class="bi-value"></span></div>
+          <div class="book-info-row"><span class="bi-label">进度</span><span id="bi-progress" class="bi-value"></span></div>
+          <div class="book-info-row"><span class="bi-label">添加时间</span><span id="bi-added" class="bi-value"></span></div>
+          <div class="book-info-row"><span class="bi-label">最近阅读</span><span id="bi-lastread" class="bi-value"></span></div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button id="btn-info-read" class="primary-btn small">开始阅读</button>
+        <button id="btn-info-close2" class="ghost-btn small">关闭</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 排序方式选择（底部弹出） -->
+  <div id="sort-menu" class="modal-mask bottom hidden">
+    <div class="sheet">
+      <div class="sheet-title">排序方式</div>
+      <button class="sheet-item" data-sort="recent"><span class="sheet-icon">🕐</span> 最近添加</button>
+      <button class="sheet-item" data-sort="lastRead"><span class="sheet-icon">📖</span> 最近阅读</button>
+      <button class="sheet-item" data-sort="title"><span class="sheet-icon">🔤</span> 书名</button>
+      <button class="sheet-item" data-sort="author"><span class="sheet-icon">👤</span> 作者</button>
+      <button id="sort-menu-cancel" class="sheet-item">取消</button>
+    </div>
+  </div>
+
+  <!-- 拖拽导入遮罩 -->
+  <div id="drop-overlay" class="drop-overlay hidden">
+    <div class="drop-message">松开以导入 EPUB 文件</div>
+  </div>
+
+  <!-- 轻提示 -->
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="lib/jszip.min.js"></script>
+  <script src="lib/epub.min.js"></script>
+  <script src="lib/pdf.min.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/reader.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>

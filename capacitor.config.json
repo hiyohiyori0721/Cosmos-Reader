@@ -1,0 +1,11 @@
+{
+  "appId": "com.epub.reader",
+  "appName": "EPUBReader",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "android": {
+    "allowMixedContent": false
+  }
+}
