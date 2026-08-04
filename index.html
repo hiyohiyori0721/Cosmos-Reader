@@ -187,6 +187,17 @@
         </div>
         <p class="font-tip">备份书库信息、进度、书签与设置（不含书籍文件，导入后需重新导入书籍）</p>
       </div>
+      <div class="setting-group about-block">
+        <label>关于</label>
+        <div class="about-inline">
+          <div class="about-inline-logo">📖</div>
+          <div class="about-inline-name">Cosmos-Reader</div>
+          <div class="about-inline-version">版本 v1.1.0</div>
+          <p class="about-inline-desc">功能完整、开箱即用的纯前端电子书阅读器，支持 EPUB / TXT / PDF / ZIP 与 Android APK 打包。数据保存在本地，离线可用。</p>
+          <a class="about-link" href="https://github.com/hiyohiyori0721/Cosmos-Reader" target="_blank" rel="noopener">GitHub 仓库 ↗</a>
+          <div class="about-inline-license">MIT License</div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -198,9 +209,6 @@
         <h1>cosmos阅读器</h1>
       </div>
       <div class="library-actions">
-        <button id="btn-about" class="ghost-btn small" title="关于" aria-label="关于">
-          <span class="sort-icon">ℹ</span> 关于
-        </button>
         <button id="btn-library-settings" class="ghost-btn small" title="设置" aria-label="设置">
           <span class="sort-icon">⚙</span> 设置
         </button>
@@ -334,37 +342,6 @@
       <div class="modal-actions">
         <button id="btn-info-read" class="primary-btn small">开始阅读</button>
         <button id="btn-info-close2" class="ghost-btn small">关闭</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- 关于弹窗 -->
-  <div id="about-modal" class="modal-mask hidden">
-    <div class="modal about-modal">
-      <div class="modal-header">
-        <span>关于</span>
-        <button id="btn-about-close" class="icon-btn" aria-label="关闭">✕</button>
-      </div>
-      <div class="about-body">
-        <div class="about-logo">📖</div>
-        <div class="about-name">Cosmos-Reader</div>
-        <div class="about-version">版本 v1.1.0</div>
-        <p class="about-desc">功能完整、开箱即用的纯前端电子书阅读器，支持 EPUB / TXT / PDF / ZIP 与 Android APK 打包。数据保存在本地，离线可用。</p>
-        <div class="about-section">
-          <div class="about-sec-title">技术栈</div>
-          <div class="about-item">epub.js · pdf.js · JSZip · Capacitor</div>
-        </div>
-        <div class="about-section">
-          <div class="about-sec-title">链接</div>
-          <a class="about-link" href="https://github.com/hiyohiyori0721/Cosmos-Reader" target="_blank" rel="noopener">GitHub 仓库 ↗</a>
-        </div>
-        <div class="about-section">
-          <div class="about-sec-title">许可</div>
-          <div class="about-item">MIT License</div>
-        </div>
-      </div>
-      <div class="modal-actions">
-        <button id="btn-about-close2" class="ghost-btn small">关闭</button>
       </div>
     </div>
   </div>

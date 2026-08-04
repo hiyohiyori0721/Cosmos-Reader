@@ -734,6 +734,14 @@ select {
 .about-link { display: inline-block; font-size: 14px; color: var(--accent); text-decoration: none; }
 .about-link:hover { text-decoration: underline; }
 
+/* 设置面板内的关于区块 */
+.about-inline { text-align: center; padding: 4px 0 2px; }
+.about-inline-logo { font-size: 34px; line-height: 1; margin-bottom: 6px; }
+.about-inline-name { font-size: 17px; font-weight: 800; color: var(--text); }
+.about-inline-version { font-size: 12px; color: var(--text-dim); margin: 3px 0 8px; }
+.about-inline-desc { font-size: 12px; color: var(--text-dim); line-height: 1.6; margin: 0 0 8px; }
+.about-inline-license { font-size: 12px; color: var(--text-dim); margin-top: 8px; }
+
 /* 长按卡片操作菜单（底部弹出） */
 .modal-mask.bottom { align-items: flex-end; padding: 0; }
 .sheet {

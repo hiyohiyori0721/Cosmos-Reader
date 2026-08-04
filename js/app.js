@@ -95,10 +95,6 @@
     btnInfoClose: $('btn-info-close'),
     btnInfoClose2: $('btn-info-close2'),
     btnInfoRead: $('btn-info-read'),
-    btnAbout: $('btn-about'),
-    aboutModal: $('about-modal'),
-    btnAboutClose: $('btn-about-close'),
-    btnAboutClose2: $('btn-about-close2'),
     bookInfoCover: $('book-info-cover'),
     biTitle: $('bi-title'),
     biAuthor: $('bi-author'),
@@ -854,15 +850,6 @@
     els.bookInfoModal.classList.add('hidden');
   }
 
-  /** 打开“关于”弹窗 */
-  function openAbout() {
-    els.aboutModal.classList.remove('hidden');
-  }
-
-  function closeAbout() {
-    els.aboutModal.classList.add('hidden');
-  }
-
   /** 删除书籍（统一入口：确认、删文件、删元数据、刷新） */
   async function deleteBook(bookId) {
     const book = Storage.getBooksMeta().find((b) => b.id === bookId);
@@ -1114,7 +1101,7 @@
   function handleBackButton() {
     // 1. 弹窗优先关闭
     let any = false;
-    ['move-modal', 'input-modal', 'confirm-modal', 'card-menu', 'sort-menu', 'book-info-modal', 'about-modal'].forEach((id) => {
+    ['move-modal', 'input-modal', 'confirm-modal', 'card-menu', 'sort-menu', 'book-info-modal'].forEach((id) => {
       const el = document.getElementById(id);
       if (el && !el.classList.contains('hidden')) { el.classList.add('hidden'); any = true; }
     });
@@ -1526,12 +1513,6 @@
       closeBookInfo();
       if (id) openBook(id);
     });
-
-    /* 关于弹窗 */
-    els.btnAbout.addEventListener('click', openAbout);
-    els.btnAboutClose.addEventListener('click', closeAbout);
-    els.btnAboutClose2.addEventListener('click', closeAbout);
-    els.aboutModal.addEventListener('click', (e) => { if (e.target === els.aboutModal) closeAbout(); });
 
     /* 排序菜单 */
     els.btnSort.addEventListener('click', openSortMenu);
