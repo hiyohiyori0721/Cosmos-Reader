@@ -31,14 +31,37 @@
     try {
       return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     } catch (e) {
-      try { return new TextDecoder('gbk').decode(bytes); }
-      catch (e2) { return new TextDecoder('utf-8').decode(bytes); }
+      // 非 UTF-8：在 GBK（简体中文）与 Shift_JIS（日文）之间选择更合理的解码
+      const gbk = new TextDecoder('gbk').decode(bytes);
+      const sjis = new TextDecoder('shift_jis').decode(bytes);
+      const gbkBad = countReplacement(gbk);
+      const sjisBad = countReplacement(sjis);
+      if (sjisBad < gbkBad) return sjis;
+      if (gbkBad < sjisBad) return gbk;
+      // 替换字符数相同：若为日文（含假名）优先 Shift_JIS，否则 GBK
+      return hasJapanese(sjis) ? sjis : gbk;
     }
+  }
+
+  /** 统计解码结果中的替换字符（非法字节映射为 U+FFFD）数量 */
+  function countReplacement(s) {
+    let n = 0;
+    for (let i = 0; i < s.length; i++) if (s.charCodeAt(i) === 0xFFFD) n++;
+    return n;
+  }
+
+  /** 是否含日文假名（平假名/片假名），用于在 GBK 与 Shift_JIS 间辅助判断 */
+  function hasJapanese(s) {
+    for (let i = 0; i < s.length; i++) {
+      const c = s.charCodeAt(i);
+      if (c >= 0x3040 && c <= 0x30FF) return true; // 平假名/片假名
+    }
+    return false;
   }
 
   function parseTxt(text) {
     const lines = text.split(/\r?\n/);
-    const chapterRe = /^\s*(第[零一二三四五六七八九十百千万两0-9０-９]{1,5}[章节回卷部篇集]|序章|序言|前言|楔子|引子|尾声|终章|后记|跋)[\s：:、.．\-—]*/;
+    const chapterRe = /^\s*(第[零一二三四五六七八九十百千万两0-9０-９]{1,5}[章节回卷部篇集幕話編]|序章|序言|前言|楔子|引子|尾声|终章|后记|跋|プロローグ|エピローグ|あとがき|前書き|はじめに|終章)[\s：:、.．\-—]*/;
     const chapters = [];
     let cur = null;
     let para = [];
