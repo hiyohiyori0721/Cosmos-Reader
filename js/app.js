@@ -263,9 +263,9 @@
     return { family: customFontFamily(id), url: fontBlobUrls[id], format: meta.format || 'truetype' };
   }
 
-  /** 刷新字体下拉选项（内置 3 项 + 已导入字体） */
+  /** 刷新字体下拉选项（跟随书籍 + 已导入字体；已移除内置衬线/无衬线） */
   function renderFontOptions() {
-    const cur = Storage.getSettings().fontFamily;
+    let cur = Storage.getSettings().fontFamily;
     els.fontFamilySelect.innerHTML = '';
     const mk = (val, label) => {
       const o = document.createElement('option');
@@ -273,10 +273,14 @@
       o.textContent = label;
       els.fontFamilySelect.appendChild(o);
     };
-    mk('serif', '衬线（宋体类）');
-    mk('sans-serif', '无衬线（黑体类）');
     mk('default', '跟随书籍');
     Storage.getFonts().forEach((f) => mk('font:' + f.id, f.name));
+    // 若当前仍是已移除的内置字体（serif/sans-serif），回退为跟随书籍
+    if (cur !== 'default' && !Storage.getFonts().some((f) => 'font:' + f.id === cur)) {
+      cur = 'default';
+      Storage.setSettings({ fontFamily: 'default' });
+      if (reader) { try { reader.setFontFamily('default'); } catch (_) {} }
+    }
     els.fontFamilySelect.value = cur;
   }
 
@@ -1353,7 +1357,7 @@
     els.lineHeightVal.textContent = s.lineHeight;
     els.marginRange.value = s.margin;
     els.marginVal.textContent = s.margin + '%';
-    els.fontFamilySelect.value = s.fontFamily;
+    els.fontFamilySelect.value = els.fontFamilySelect.querySelector('option[value="' + s.fontFamily + '"]') ? s.fontFamily : 'default';
     els.flowSelect.value = s.flow;
     els.volumeKeyToggle.checked = !!s.volumeKeyTurn;
     document.querySelectorAll('.theme-btn').forEach((b) => {
@@ -1400,7 +1404,7 @@
     els.lineHeightVal.textContent = s.lineHeight;
     els.marginRange.value = s.margin;
     els.marginVal.textContent = s.margin + '%';
-    els.fontFamilySelect.value = s.fontFamily;
+    els.fontFamilySelect.value = els.fontFamilySelect.querySelector('option[value="' + s.fontFamily + '"]') ? s.fontFamily : 'default';
     els.flowSelect.value = s.flow;
     els.volumeKeyToggle.checked = !!s.volumeKeyTurn;
     document.querySelectorAll('.theme-btn').forEach((b) => {
