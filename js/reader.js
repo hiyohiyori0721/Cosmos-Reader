@@ -31,15 +31,25 @@
     try {
       return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
     } catch (e) {
-      // 非 UTF-8：在 GBK（简体中文）与 Shift_JIS（日文）之间选择更合理的解码
+      // 非 UTF-8：在 GBK（简体中文）、Big5（繁体中文）、Shift_JIS（日文）间择优
       const gbk = new TextDecoder('gbk').decode(bytes);
+      const big5 = new TextDecoder('big5').decode(bytes);
       const sjis = new TextDecoder('shift_jis').decode(bytes);
-      const gbkBad = countReplacement(gbk);
-      const sjisBad = countReplacement(sjis);
-      if (sjisBad < gbkBad) return sjis;
-      if (gbkBad < sjisBad) return gbk;
-      // 替换字符数相同：若为日文（含假名）优先 Shift_JIS，否则 GBK
-      return hasJapanese(sjis) ? sjis : gbk;
+      const gb = countReplacement(gbk);
+      const b5 = countReplacement(big5);
+      const sj = countReplacement(sjis);
+      const min = Math.min(gb, b5, sj);
+      const cands = [];
+      if (gb === min) cands.push('gbk');
+      if (b5 === min) cands.push('big5');
+      if (sj === min) cands.push('sjis');
+      if (cands.length === 1) {
+        return cands[0] === 'gbk' ? gbk : cands[0] === 'big5' ? big5 : sjis;
+      }
+      // 多个候选：用特征辅助判断（日文假名 → SJIS；繁体用字 → Big5；否则简体 GBK）
+      if (cands.includes('sjis') && hasJapanese(sjis)) return sjis;
+      if (cands.includes('big5') && isTraditional(big5)) return big5;
+      return gbk;
     }
   }
 
@@ -57,6 +67,19 @@
       if (c >= 0x3040 && c <= 0x30FF) return true; // 平假名/片假名
     }
     return false;
+  }
+
+  /** 繁体中文特征检测：简体/繁体常用字命中数对比（命中繁体字更多 → 视为繁体） */
+  function isTraditional(s) {
+    const tradChars = '這個說裡時後與為無點書車裏來著國學聽較嗎問門開發長們兩師軍張讓當';
+    const simpChars = '这个说里时候与为无点书车里来着国学听较吗问门开发长们两师军张让当';
+    let t = 0, si = 0;
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      if (tradChars.includes(ch)) t++;
+      if (simpChars.includes(ch)) si++;
+    }
+    return t > si;
   }
 
   function parseTxt(text) {
