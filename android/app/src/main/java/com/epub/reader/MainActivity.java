@@ -4,11 +4,16 @@ import android.view.KeyEvent;
 import com.getcapacitor.BridgeActivity;
 
 public class MainActivity extends BridgeActivity {
+    public MainActivity() {
+        // 在 load()（bridge 创建）之前注册音量键开关插件
+        registerPlugin(VolumeKeyPlugin.class);
+    }
+
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
-        // 音量键翻页：Android 硬件音量键不会产生 WebView 键盘事件，
-        // 在原生层拦截并转发为 JS 事件（JS 侧根据“音量键翻页”开关决定是否翻页）
-        if (event.getAction() == KeyEvent.ACTION_DOWN) {
+        // 仅当“音量键翻页”开启时拦截音量键并转发为 JS 事件；
+        // 关闭时恢复正常系统音量键（不拦截）
+        if (VolumeKeyPlugin.isEnabled() && event.getAction() == KeyEvent.ACTION_DOWN) {
             if (event.getKeyCode() == KeyEvent.KEYCODE_VOLUME_UP) {
                 getBridge().triggerDocumentJSEvent("volumeUp");
                 return true;

@@ -1372,6 +1372,15 @@
     if (reader) { try { reader.setCustomTheme(s.customBg, s.customText); } catch (_) {} }
   }
 
+  /** 同步“音量键翻页”开关到原生：关闭时恢复系统音量键（原生不再拦截） */
+  function syncNativeVolumeKey() {
+    try {
+      const enabled = !!Storage.getSettings().volumeKeyTurn;
+      const V = window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.VolumeKey;
+      if (V) V.setEnabled({ enabled: enabled });
+    } catch (_) {}
+  }
+
   /* ================= 拖拽 ================= */
   function bindDragDrop() {
     ['dragenter', 'dragover'].forEach((ev) => {
@@ -1417,6 +1426,7 @@
     renderFontOptions();
     renderCustomFontList();
     loadFontAssets();
+    syncNativeVolumeKey();
 
     renderLibrary();
     bindDragDrop();
@@ -1639,6 +1649,7 @@
     });
     els.volumeKeyToggle.addEventListener('change', () => {
       Storage.setSettings({ volumeKeyTurn: els.volumeKeyToggle.checked });
+      syncNativeVolumeKey();
     });
     document.querySelectorAll('.theme-btn').forEach((btn) => {
       btn.addEventListener('click', () => {
