@@ -45,8 +45,15 @@
     lineHeightVal: $('line-height-val'),
     marginRange: $('margin-range'),
     marginVal: $('margin-val'),
-    fontFamilySelect: $('font-family-select'),
-    flowSelect: $('flow-select'),
+    fontPicker: $('font-picker'),
+    fontPickerBtn: $('font-picker-btn'),
+    fontPickerLabel: $('font-picker-label'),
+    fontPickerMenu: $('font-picker-menu'),
+    flowSeg: $('flow-seg'),
+    themePicker: $('theme-picker'),
+    themePickerBtn: $('theme-picker-btn'),
+    themePickerLabel: $('theme-picker-label'),
+    themePickerMenu: $('theme-picker-menu'),
     volumeKeyToggle: $('volume-key-toggle'),
     dropOverlay: $('drop-overlay'),
     toast: $('toast'),
@@ -77,6 +84,7 @@
     cardMenuDelete: $('card-menu-delete'),
     cardMenuCancel: $('card-menu-cancel'),
     cardMenuInfo: $('card-menu-info'),
+    cardMenuSelect: $('card-menu-select'),
     btnSort: $('btn-sort'),
     btnLibrarySettings: $('btn-library-settings'),
     sortMenu: $('sort-menu'),
@@ -84,7 +92,6 @@
     btnImportFont: $('btn-import-font'),
     fontFileInput: $('font-file-input'),
     customFontList: $('custom-font-list'),
-    btnSelect: $('btn-select'),
     selectBar: $('select-bar'),
     selectCount: $('select-count'),
     selectMove: $('select-move'),
@@ -106,6 +113,7 @@
     hlBar: $('hl-bar'),
     hlCancel: $('hl-cancel'),
     hlClear: $('hl-clear'),
+    hlColorInput: $('hl-color-input'),
     readerStatus: $('reader-status'),
     statusTime: $('status-time'),
     statusBatteryFill: $('battery-fill'),
@@ -263,15 +271,112 @@
     return { family: customFontFamily(id), url: fontBlobUrls[id], format: meta.format || 'truetype' };
   }
 
-  /** 刷新字体下拉选项（跟随书籍 + 已导入字体；已移除内置衬线/无衬线） */
+  /** 字体值 → 显示名 */
+  function fontLabelOf(val) {
+    if (!val || val === 'default') return '跟随书籍';
+    const f = Storage.getFonts().find((x) => 'font:' + x.id === val);
+    return f ? f.name : '跟随书籍';
+  }
+
+  /** 同步字体选择器 UI（当前值高亮 + 按钮文字） */
+  function updateFontPickerUI() {
+    const cur = Storage.getSettings().fontFamily;
+    els.fontPickerLabel.textContent = fontLabelOf(cur);
+    els.fontPickerMenu.querySelectorAll('.picker-item').forEach((b) => {
+      b.classList.toggle('active', b.dataset.value === cur);
+    });
+  }
+
+  /** 阅读模式分段控件高亮 */
+  function updateFlowSeg(flow) {
+    els.flowSeg.querySelectorAll('.seg-btn').forEach((b) => {
+      b.classList.toggle('active', b.dataset.flow === flow);
+    });
+  }
+
+  const THEMES = [
+    { v: 'light', label: '白天', cls: 'light', bg: '#ffffff', text: '#2c2c2c' },
+    { v: 'sepia', label: '护眼', cls: 'sepia', bg: '#f2e8d5', text: '#433422' },
+    { v: 'dark', label: '夜间', cls: 'dark', bg: '#1c1c1e', text: '#d6d3cb' },
+    { v: 'green', label: '绿意', cls: 'green', bg: '#e6efe2', text: '#2e3a2b' },
+    { v: 'blue', label: '湛蓝', cls: 'blue', bg: '#e3ecf5', text: '#293846' },
+    { v: 'ink', label: '墨夜', cls: 'ink', bg: '#121214', text: '#e4e1d9' },
+    { v: 'custom', label: '自定义', cls: 'custom' },
+  ];
+
+  /** 是否设置了自定义背景/文字颜色（决定主题选择器是否高亮"自定义"） */
+  function hasCustomColors() {
+    const s = Storage.getSettings();
+    return !!(s.customBg || s.customText);
+  }
+
+  /** 主题默认背景/文字色（自定义颜色输入框在无自定义值时显示） */
+  function themeColorsOf(v) {
+    if (v === 'custom') {
+      const s = Storage.getSettings();
+      return { bg: s.customBg || '#ffffff', text: s.customText || '#2c2c2c' };
+    }
+    const t = THEMES.find((x) => x.v === v) || THEMES[0];
+    return { bg: t.bg, text: t.text };
+  }
+
+  /** 主题值 → 显示名 */
+  function themeLabelOf(v) {
+    const t = THEMES.find((x) => x.v === v);
+    return t ? t.label : '白天';
+  }
+
+  /** 渲染主题选择器选项（色块预览 + 名称） */
+  function renderThemeOptions() {
+    const hasCustom = hasCustomColors();
+    const cur = hasCustom ? 'custom' : Storage.getSettings().theme;
+    els.themePickerMenu.innerHTML = '';
+    THEMES.forEach((t) => {
+      // 未选择自定义主题时不显示"自定义"选项
+      if (t.v === 'custom' && !hasCustom) return;
+      const o = document.createElement('button');
+      o.type = 'button';
+      o.className = 'picker-item theme-item' + (t.v === cur ? ' active' : '');
+      o.dataset.theme = t.v;
+      o.innerHTML = '<span class="swatch ' + t.cls + '"></span>' + t.label;
+      o.addEventListener('click', () => {
+        els.themePickerMenu.classList.add('hidden');
+        els.themePicker.classList.remove('open');
+        applyTheme(t.v);
+      });
+      els.themePickerMenu.appendChild(o);
+    });
+    updateThemePickerUI();
+  }
+
+  /** 同步主题选择器 UI（当前值高亮 + 按钮文字） */
+  function updateThemePickerUI() {
+    const cur = hasCustomColors() ? 'custom' : Storage.getSettings().theme;
+    els.themePickerLabel.textContent = themeLabelOf(cur);
+    els.themePickerMenu.querySelectorAll('.theme-item').forEach((b) => {
+      b.classList.toggle('active', b.dataset.theme === cur);
+    });
+  }
+
+  /** 刷新字体选择器选项（跟随书籍 + 已导入字体；已移除内置衬线/无衬线） */
   function renderFontOptions() {
     let cur = Storage.getSettings().fontFamily;
-    els.fontFamilySelect.innerHTML = '';
+    els.fontPickerMenu.innerHTML = '';
     const mk = (val, label) => {
-      const o = document.createElement('option');
-      o.value = val;
+      const o = document.createElement('button');
+      o.type = 'button';
+      o.className = 'picker-item' + (val === cur ? ' active' : '');
+      o.dataset.value = val;
       o.textContent = label;
-      els.fontFamilySelect.appendChild(o);
+      o.addEventListener('click', () => {
+        els.fontPickerMenu.classList.add('hidden');
+        els.fontPicker.classList.remove('open');
+        if (val === cur) return;
+        Storage.setSettings({ fontFamily: val });
+        if (reader) reader.setFontFamily(val);
+        updateFontPickerUI();
+      });
+      els.fontPickerMenu.appendChild(o);
     };
     mk('default', '跟随书籍');
     Storage.getFonts().forEach((f) => mk('font:' + f.id, f.name));
@@ -281,7 +386,7 @@
       Storage.setSettings({ fontFamily: 'default' });
       if (reader) { try { reader.setFontFamily('default'); } catch (_) {} }
     }
-    els.fontFamilySelect.value = cur;
+    updateFontPickerUI();
   }
 
   /** 渲染设置面板的自定义字体列表 */
@@ -1181,7 +1286,13 @@
       meta.className = 'bm-meta';
       if (bm.type === 'highlight') {
         const dot = document.createElement('span');
-        dot.className = 'hl-dot hl-' + (bm.color || 'yellow');
+        if (/^#([0-9a-f]{6})$/i.test(bm.color || '')) {
+          // 自定义颜色：直接设色点背景
+          dot.className = 'hl-dot';
+          dot.style.background = bm.color;
+        } else {
+          dot.className = 'hl-dot hl-' + (bm.color || 'yellow');
+        }
         meta.appendChild(dot);
       }
       meta.appendChild(document.createTextNode(
@@ -1348,28 +1459,54 @@
     els.lineHeightVal.textContent = s.lineHeight;
     els.marginRange.value = s.margin;
     els.marginVal.textContent = s.margin + '%';
-    els.fontFamilySelect.value = els.fontFamilySelect.querySelector('option[value="' + s.fontFamily + '"]') ? s.fontFamily : 'default';
-    els.flowSelect.value = s.flow;
+    els.fontPickerLabel.textContent = fontLabelOf(s.fontFamily);
+    updateFlowSeg(s.flow);
     els.volumeKeyToggle.checked = !!s.volumeKeyTurn;
-    els.customBgInput.value = s.customBg || '#ffffff';
-    els.customTextInput.value = s.customText || '#2c2c2c';
-    document.querySelectorAll('.theme-btn').forEach((b) => {
-      b.classList.toggle('active', b.dataset.theme === s.theme);
-    });
+    els.customBgInput.value = s.customBg || themeColorsOf(hasCustomColors() ? 'custom' : s.theme).bg;
+    els.customTextInput.value = s.customText || themeColorsOf(hasCustomColors() ? 'custom' : s.theme).text;
+    updateThemePickerUI();
   }
 
   function applyTheme(theme) {
+    if (theme === 'custom') {
+      // 选择"自定义"主题：应用自定义背景/文字色；未设置过则用 light 默认色（可在输入框调整）
+      const s = Storage.getSettings();
+      const bg = s.customBg || '#ffffff';
+      const text = s.customText || '#2c2c2c';
+      Storage.setSettings({ theme: s.theme || 'light', customBg: bg, customText: text });
+      document.body.className = 'theme-' + (s.theme || 'light');
+      if (reader) { try { reader.setCustomTheme(bg, text); } catch (_) {} }
+      applyCustomTheme();
+      updateThemePickerUI();
+      return;
+    }
     document.body.className = 'theme-' + theme;
-    if (reader) reader.setTheme(theme);
-    Storage.setSettings({ theme });
+    // 切换预设主题时清空自定义背景/文字颜色，确保主题完全生效（自定义色会覆盖主题色）
+    Storage.setSettings({ theme, customBg: null, customText: null });
+    if (reader) {
+      try { reader.setTheme(theme); } catch (_) {}
+      try { reader.setCustomTheme(null, null); } catch (_) {}
+    }
+    applyCustomTheme(); // 同步颜色选择器 UI（显示主题默认色值）
+    updateThemePickerUI();
   }
 
   /** 应用自定义背景/文字颜色（设置面板颜色选择器） */
   function applyCustomTheme() {
     const s = Storage.getSettings();
-    els.customBgInput.value = s.customBg || '#ffffff';
-    els.customTextInput.value = s.customText || '#2c2c2c';
+    const hasCustom = !!(s.customBg || s.customText);
+    const tc = themeColorsOf(hasCustom ? 'custom' : s.theme);
+    els.customBgInput.value = s.customBg || tc.bg;
+    els.customTextInput.value = s.customText || tc.text;
+    // 自定义颜色同步更新主题色：在 body 上覆盖 CSS 变量（主题变量定义于 body.theme-xxx，
+    // 需在 body 级 inline 覆盖才能让整个界面生效）；无自定义色时用主题默认色，有则用自定义色
+    const b = document.body;
+    b.style.setProperty('--bg', tc.bg);
+    b.style.setProperty('--surface', tc.bg);
+    b.style.setProperty('--text', tc.text);
     if (reader) { try { reader.setCustomTheme(s.customBg, s.customText); } catch (_) {} }
+    // 重建主题选项（有无"自定义"项随 hasCustom 变化）+ 更新 UI
+    renderThemeOptions();
   }
 
   /** 同步“音量键翻页”开关到原生：关闭时恢复系统音量键（原生不再拦截） */
@@ -1414,15 +1551,14 @@
     els.lineHeightVal.textContent = s.lineHeight;
     els.marginRange.value = s.margin;
     els.marginVal.textContent = s.margin + '%';
-    els.fontFamilySelect.value = els.fontFamilySelect.querySelector('option[value="' + s.fontFamily + '"]') ? s.fontFamily : 'default';
-    els.flowSelect.value = s.flow;
+    els.fontPickerLabel.textContent = fontLabelOf(s.fontFamily);
+    updateFlowSeg(s.flow);
     els.volumeKeyToggle.checked = !!s.volumeKeyTurn;
-    els.customBgInput.value = s.customBg || '#ffffff';
-    els.customTextInput.value = s.customText || '#2c2c2c';
-    document.querySelectorAll('.theme-btn').forEach((b) => {
-      b.classList.toggle('active', b.dataset.theme === s.theme);
-    });
+    els.customBgInput.value = s.customBg || themeColorsOf(hasCustomColors() ? 'custom' : s.theme).bg;
+    els.customTextInput.value = s.customText || themeColorsOf(hasCustomColors() ? 'custom' : s.theme).text;
+    updateThemePickerUI();
 
+    renderThemeOptions();
     renderFontOptions();
     renderCustomFontList();
     loadFontAssets();
@@ -1514,6 +1650,14 @@
       if (id) openBookInfo(id);
     });
 
+    /* 长按菜单：多选（进入多选模式并自动勾选当前书） */
+    els.cardMenuSelect.addEventListener('click', () => {
+      const id = cardMenuBookId;
+      closeCardMenu();
+      enterSelectMode();
+      if (id) toggleSelect(id);
+    });
+
     /* 书籍信息弹窗 */
     els.btnInfoClose.addEventListener('click', closeBookInfo);
     els.btnInfoClose2.addEventListener('click', closeBookInfo);
@@ -1539,7 +1683,6 @@
     els.sortMenu.addEventListener('click', (e) => { if (e.target === els.sortMenu) closeSortMenu(); });
 
     /* 多选 */
-    els.btnSelect.addEventListener('click', () => selectMode ? exitSelectMode() : enterSelectMode());
     els.selectMove.addEventListener('click', selectBatchMove);
     els.selectDelete.addEventListener('click', selectBatchDelete);
     els.selectAll.addEventListener('click', toggleSelectAll);
@@ -1603,6 +1746,18 @@
     els.hlCancel.addEventListener('click', () => { pendingHighlight = null; els.hlBar.classList.add('hidden'); });
     els.hlClear.addEventListener('click', clearPendingHighlight);
 
+    /* 自定义划线颜色 */
+    els.hlColorInput.addEventListener('change', () => {
+      if (!pendingHighlight || !currentBookId || !reader) return;
+      const color = els.hlColorInput.value;
+      reader.addHighlight(pendingHighlight.cfi, color);
+      Storage.addBookmark(currentBookId, { cfi: pendingHighlight.cfi, text: pendingHighlight.text, date: Date.now(), type: 'highlight', color });
+      pendingHighlight = null;
+      els.hlBar.classList.add('hidden');
+      renderBookmarks();
+      showToast('已划线');
+    });
+
     /* 数据备份 */
     els.btnExportBackup.addEventListener('click', exportBackup);
     els.btnImportBackup.addEventListener('click', () => els.backupFileInput.click());
@@ -1631,10 +1786,17 @@
       Storage.setSettings({ margin: v });
       if (reader) reader.setMargin(v);
     });
-    els.fontFamilySelect.addEventListener('change', () => {
-      const v = els.fontFamilySelect.value;
-      Storage.setSettings({ fontFamily: v });
-      if (reader) reader.setFontFamily(v);
+    /* 字体选择器（自定义下拉） */
+    els.fontPickerBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      els.fontPickerMenu.classList.toggle('hidden');
+      els.fontPicker.classList.toggle('open', !els.fontPickerMenu.classList.contains('hidden'));
+    });
+    document.addEventListener('click', () => {
+      els.fontPickerMenu.classList.add('hidden');
+      els.fontPicker.classList.remove('open');
+      els.themePickerMenu.classList.add('hidden');
+      els.themePicker.classList.remove('open');
     });
 
     /* 自定义字体 */
@@ -1644,20 +1806,24 @@
       if (f) importFontFile(f);
       e.target.value = '';
     });
-    els.flowSelect.addEventListener('change', () => {
-      const v = els.flowSelect.value;
-      Storage.setSettings({ flow: v });
-      if (reader) reader.setFlow(v);
+    /* 阅读模式分段控件 */
+    els.flowSeg.querySelectorAll('.seg-btn').forEach((b) => {
+      b.addEventListener('click', () => {
+        const v = b.dataset.flow;
+        Storage.setSettings({ flow: v });
+        if (reader) reader.setFlow(v);
+        updateFlowSeg(v);
+      });
     });
     els.volumeKeyToggle.addEventListener('change', () => {
       Storage.setSettings({ volumeKeyTurn: els.volumeKeyToggle.checked });
       syncNativeVolumeKey();
     });
-    document.querySelectorAll('.theme-btn').forEach((btn) => {
-      btn.addEventListener('click', () => {
-        applyTheme(btn.dataset.theme);
-        syncSettingsUI();
-      });
+    /* 主题选择器（自定义下拉） */
+    els.themePickerBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      els.themePickerMenu.classList.toggle('hidden');
+      els.themePicker.classList.toggle('open', !els.themePickerMenu.classList.contains('hidden'));
     });
 
     /* 自定义背景 / 自定义文字颜色 */

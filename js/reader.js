@@ -16,6 +16,24 @@
     blue: 'rgba(66, 133, 244, 0.45)',
   };
 
+  /** 十六进制颜色 → rgba（自定义划线颜色用） */
+  function hexToRgba(hex, alpha) {
+    const m = /^#?([0-9a-f]{6})$/i.exec((hex || '').trim());
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    return 'rgba(' + ((n >> 16) & 255) + ', ' + ((n >> 8) & 255) + ', ' + (n & 255) + ', ' + (alpha == null ? 0.45 : alpha) + ')';
+  }
+
+  /** 各主题的内容默认背景/文字色（_applyCustomColors 兜底用，不依赖 epub.js select 时机） */
+  const READER_THEME_COLORS = {
+    light: { bg: '#ffffff', text: '#2c2c2c' },
+    sepia: { bg: '#f2e8d5', text: '#433422' },
+    dark: { bg: '#1c1c1e', text: '#d6d3cb' },
+    green: { bg: '#e6efe2', text: '#2e3a2b' },
+    blue: { bg: '#e3ecf5', text: '#293846' },
+    ink: { bg: '#121214', text: '#e4e1d9' },
+  };
+
   /* ---------- TXT 工具 ---------- */
   function decodeTxt(buffer) {
     const bytes = new Uint8Array(buffer);
@@ -227,6 +245,7 @@
         this._attachClickZones();
         this._applyEpubMargin();
         this._neutralizeTabs();
+        this._applyCustomColors();
         this._applyEpubFont();
         this._applyHls();
         this._bindScrolledProgress();
@@ -618,7 +637,8 @@
         if (this.mode !== 'txt' || !this.txt || !this.onSelectedText) return;
         const sel = window.getSelection();
         if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
-        const node = sel.anchorNode;
+        const range = sel.getRangeAt(0);
+        const node = range.startContainer;
         if (!node || !this.txt.container.contains(node)) return;
         const el = node.nodeType === 3 ? node.parentElement : node;
         const para = el && el.closest ? el.closest('.txt-para') : null;
@@ -626,7 +646,8 @@
         const sec = para.closest('.txt-chapter');
         const ci = sec ? parseInt(sec.dataset.index, 10) : 0;
         const pi = Array.prototype.indexOf.call(sec ? sec.querySelectorAll('.txt-para') : [], para);
-        this.onSelectedText(TXT_PREFIX + ci + ':' + pi, para.textContent.trim().replace(/\s+/g, ' ').slice(0, 120), false);
+        const off = this._rangeOffsetsInPara(range, para);
+        this.onSelectedText(TXT_PREFIX + ci + ':' + pi + ':' + off.start + ':' + off.end, para.textContent.trim().replace(/\s+/g, ' ').slice(0, 120), false);
       };
       document.addEventListener('selectionchange', this._txtSelHandler);
 
@@ -1138,7 +1159,7 @@
         this._hlList.forEach((h) => {
           try {
             this.rendition.annotations.highlight(h.cfi, { type: 'highlight', color: h.color }, function () {}, 'reader-hl', {
-              fill: HL_COLORS[h.color] || HL_COLORS.yellow,
+              fill: HL_COLORS[h.color] || hexToRgba(h.color, 0.45) || HL_COLORS.yellow,
               'fill-opacity': '0.45',
             });
           } catch (e) {
@@ -1176,16 +1197,81 @@
       }, 180);
     }
 
+    /** 计算 Range 相对段落文本内容的字符偏移（部分划线用） */
+    _rangeOffsetsInPara(range, para) {
+      try {
+        const preStart = document.createRange();
+        preStart.selectNodeContents(para);
+        preStart.setEnd(range.startContainer, range.startOffset);
+        const start = preStart.toString().length;
+        const preEnd = document.createRange();
+        preEnd.selectNodeContents(para);
+        preEnd.setEnd(range.endContainer, range.endOffset);
+        const end = preEnd.toString().length;
+        return { start, end };
+      } catch (_) {
+        return { start: 0, end: para.textContent.length };
+      }
+    }
+
+    /** 清除段落内已插入的划线 mark 标记 */
+    _clearTxtParaMarks(para) {
+      para.querySelectorAll('.txt-hl').forEach((m) => {
+        const parent = m.parentNode;
+        parent.replaceChild(document.createTextNode(m.textContent), m);
+        parent.normalize();
+      });
+      para.style.background = '';
+    }
+
+    /** 用 mark 包裹段落中 [s,e) 范围的文字并上色 */
+    _markTxtRange(para, s, e, color) {
+      const rgba = HL_COLORS[color] || hexToRgba(color, 0.45) || HL_COLORS.yellow;
+      const textNodes = [];
+      const walker = document.createTreeWalker(para, NodeFilter.SHOW_TEXT);
+      while (walker.nextNode()) textNodes.push(walker.currentNode);
+      let pos = 0;
+      for (const node of textNodes) {
+        const len = node.nodeValue.length;
+        const nodeStart = pos;
+        const nodeEnd = pos + len;
+        pos = nodeEnd;
+        if (nodeEnd <= s || nodeStart >= e) continue;
+        const cutS = Math.max(s, nodeStart) - nodeStart;
+        const cutE = Math.min(e, nodeEnd) - nodeStart;
+        if (cutS >= cutE) continue;
+        const mark = document.createElement('mark');
+        mark.className = 'txt-hl';
+        mark.style.background = rgba;
+        mark.style.borderRadius = '3px';
+        const hl = node.splitText(cutS);
+        hl.splitText(cutE - cutS);
+        hl.parentNode.replaceChild(mark, hl);
+        mark.appendChild(hl);
+      }
+      para.normalize();
+    }
+
     _applyTxtHighlight(cfi, color) {
       const parts = cfi && cfi.indexOf(TXT_PREFIX) === 0 ? cfi.slice(TXT_PREFIX.length).split(':') : [];
       const ci = parseInt(parts[0], 10);
       const pi = parseInt(parts[1], 10);
+      const s = parts.length >= 4 ? parseInt(parts[2], 10) : null;
+      const e = parts.length >= 4 ? parseInt(parts[3], 10) : null;
       const sec = this.txt.content.querySelectorAll('.txt-chapter')[ci];
       const para = sec ? sec.querySelectorAll('.txt-para')[pi] : null;
-      if (para) {
+      if (!para) return;
+      // 先清除该段已有划线标记
+      this._clearTxtParaMarks(para);
+      para.classList.remove('txt-hl');
+      const colorVal = color || 'yellow';
+      if (s == null || e == null || s >= e) {
+        // 旧格式或无偏移：整段划线（inline 上色）
         para.classList.add('txt-hl');
-        para.dataset.hlColor = color || 'yellow';
+        para.style.background = HL_COLORS[colorVal] || hexToRgba(colorVal, 0.45) || HL_COLORS.yellow;
+        return;
       }
+      this._markTxtRange(para, s, e, colorVal);
     }
 
     _removeTxtHighlight(cfi) {
@@ -1194,7 +1280,10 @@
       const pi = parseInt(parts[1], 10);
       const sec = this.txt.content.querySelectorAll('.txt-chapter')[ci];
       const para = sec ? sec.querySelectorAll('.txt-para')[pi] : null;
-      if (para) para.classList.remove('txt-hl');
+      if (para) {
+        para.classList.remove('txt-hl');
+        this._clearTxtParaMarks(para);
+      }
     }
 
     /** 提取当前视口中心的正文文本（书签文字） */
@@ -1253,6 +1342,18 @@
         body: { color: '#d6d3cb !important', background: '#1c1c1e !important' },
         a: { color: '#d4a844 !important' },
       });
+      themes.register('app-green', {
+        body: { color: '#2e3a2b !important', background: '#e6efe2 !important' },
+        a: { color: '#4f8a43 !important' },
+      });
+      themes.register('app-blue', {
+        body: { color: '#293846 !important', background: '#e3ecf5 !important' },
+        a: { color: '#3577a8 !important' },
+      });
+      themes.register('app-ink', {
+        body: { color: '#e4e1d9 !important', background: '#121214 !important' },
+        a: { color: '#e0a94f !important' },
+      });
 
       const margin = (typeof s.margin === 'number' ? s.margin : 4);
       themes.select('app-' + (s.theme || 'light'));
@@ -1272,32 +1373,22 @@
 
     /** 应用自定义背景与文字颜色（覆盖当前主题对应色；阅读界面；清空即恢复主题） */
     _applyCustomColors() {
-      const bg = this.settings.customBg;
-      const text = this.settings.customText;
+      const theme = this.settings.theme || 'light';
+      const tc = READER_THEME_COLORS[theme] || READER_THEME_COLORS.light;
+      const bg = this.settings.customBg || tc.bg;
+      const text = this.settings.customText || tc.text;
       if (this.mode === 'epub' && this.el) {
-        // 向各 iframe 注入/更新独立 style（可控，避免 epub.js override 累积）
-        const css = (bg ? 'body{background:' + bg + ' !important;}' : '')
-          + (text ? 'body{color:' + text + ' !important;}' : '');
+        // 直接给 iframe body 设 inline 背景/文字色（inline !important 优先级最高，
+        // 覆盖书籍 CSS 与 epub.js 主题 style，确保主题总是立即完全生效）
         this.el.querySelectorAll('iframe').forEach((iframe) => {
           const doc = iframe.contentDocument;
-          if (!doc || !doc.head) return;
-          let style = doc.getElementById('reader-custom-colors');
-          if (css) {
-            if (!style) {
-              style = doc.createElement('style');
-              style.id = 'reader-custom-colors';
-              doc.head.appendChild(style);
-            }
-            style.textContent = css;
-          } else if (style) {
-            style.remove();
-          }
+          if (!doc || !doc.body) return;
+          doc.body.style.setProperty('background', bg, 'important');
+          doc.body.style.setProperty('color', text, 'important');
         });
       } else if (this.mode === 'txt' && this.txt) {
-        if (bg) this.txt.container.style.background = bg;
-        else this.txt.container.style.background = '';
-        if (text) this.txt.container.style.color = text;
-        else this.txt.container.style.color = '';
+        this.txt.container.style.background = bg;
+        this.txt.container.style.color = text;
       }
     }
 
@@ -1357,10 +1448,12 @@
 
     setTheme(theme) {
       this.settings.theme = theme;
-      if (this.mode === 'txt') return; // 主题由 body 主题类控制
+      if (this.mode === 'txt') { this._applyCustomColors(); return; }
       if (this.rendition) {
         try { this.rendition.themes.select('app-' + theme); } catch (_) {}
       }
+      // 兜底：直接注入背景/文字色，不依赖 epub.js select 时机，保证主题完全生效
+      this._applyCustomColors();
     }
 
     setFontSize(px) {

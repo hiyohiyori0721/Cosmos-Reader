@@ -37,10 +37,13 @@
     <div id="reader"></div>
     <!-- 划线操作条（选中文本后显示） -->
     <div id="hl-bar" class="hl-bar hidden">
-      <span class="hl-hint">划线</span>
       <button class="hl-color" data-color="yellow" aria-label="黄色">🟡</button>
       <button class="hl-color" data-color="green" aria-label="绿色">🟢</button>
       <button class="hl-color" data-color="blue" aria-label="蓝色">🔵</button>
+      <label class="hl-custom" title="自定义颜色" aria-label="自定义颜色">
+        <span class="hl-custom-icon">🎨</span>
+        <input type="color" id="hl-color-input" value="#ff00ff" />
+      </label>
       <button id="hl-clear" class="hl-clear" aria-label="清除划线" title="清除划线">🚫</button>
       <button id="hl-cancel" class="hl-cancel" aria-label="取消">✕</button>
     </div>
@@ -122,10 +125,12 @@
     <div class="settings-body">
       <div class="setting-group">
         <label>主题</label>
-        <div class="theme-options">
-          <button class="theme-btn" data-theme="light" title="白天"><span class="swatch light"></span></button>
-          <button class="theme-btn" data-theme="sepia" title="护眼"><span class="swatch sepia"></span></button>
-          <button class="theme-btn" data-theme="dark" title="夜间"><span class="swatch dark"></span></button>
+        <div id="theme-picker" class="picker">
+          <button id="theme-picker-btn" class="picker-btn" type="button">
+            <span id="theme-picker-label">白天</span>
+            <span class="picker-caret">▾</span>
+          </button>
+          <div id="theme-picker-menu" class="picker-menu hidden"></div>
         </div>
       </div>
       <div class="setting-group">
@@ -156,9 +161,13 @@
       </div>
       <div class="setting-group">
         <label>字体</label>
-        <select id="font-family-select">
-          <option value="default">跟随书籍</option>
-        </select>
+        <div id="font-picker" class="picker">
+          <button id="font-picker-btn" class="picker-btn" type="button">
+            <span id="font-picker-label">跟随书籍</span>
+            <span class="picker-caret">▾</span>
+          </button>
+          <div id="font-picker-menu" class="picker-menu hidden"></div>
+        </div>
       </div>
       <div class="setting-group">
         <label>自定义字体</label>
@@ -169,10 +178,10 @@
       </div>
       <div class="setting-group">
         <label>阅读模式</label>
-        <select id="flow-select">
-          <option value="paginated">分页</option>
-          <option value="scrolled">连续滚动</option>
-        </select>
+        <div id="flow-seg" class="segmented">
+          <button class="seg-btn" data-flow="paginated" type="button">分页</button>
+          <button class="seg-btn" data-flow="scrolled" type="button">连续滚动</button>
+        </div>
       </div>
       <div class="setting-group setting-switch">
         <label for="volume-key-toggle">音量键翻页</label>
@@ -192,7 +201,7 @@
         <div class="about-inline">
           <div class="about-inline-logo">📖</div>
           <div class="about-inline-name">Cosmos-Reader</div>
-          <div class="about-inline-version">版本 v1.1.0</div>
+          <div class="about-inline-version">版本 v1.2.0</div>
           <p class="about-inline-desc">功能完整、开箱即用的纯前端电子书阅读器，支持 EPUB / TXT / PDF / ZIP 与 Android APK 打包。数据保存在本地，离线可用。</p>
           <a class="about-link" href="https://github.com/hiyohiyori0721/Cosmos-Reader" target="_blank" rel="noopener">GitHub 仓库 ↗</a>
           <div class="about-inline-license">MIT License</div>
@@ -214,9 +223,6 @@
         </button>
         <button id="btn-sort" class="ghost-btn small" title="排序方式" aria-label="排序方式">
           <span class="sort-icon">⇅</span> 排序
-        </button>
-        <button id="btn-select" class="ghost-btn small" title="多选" aria-label="多选">
-          <span class="sort-icon">☑</span> 多选
         </button>
         <input id="file-input" type="file" accept=".epub,.txt,.pdf,.zip,application/epub+zip,text/plain,application/pdf,application/zip" hidden />
       </div>
@@ -309,6 +315,9 @@
       <div id="card-menu-title" class="sheet-title"></div>
       <button id="card-menu-info" class="sheet-item">
         <span class="sheet-icon">ℹ️</span> 预览信息
+      </button>
+      <button id="card-menu-select" class="sheet-item">
+        <span class="sheet-icon">☑</span> 多选
       </button>
       <button id="card-menu-move" class="sheet-item">
         <span class="sheet-icon">📁</span> 移动到文件夹
