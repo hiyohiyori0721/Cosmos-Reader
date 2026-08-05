@@ -287,9 +287,9 @@
       // 因此这里保持 body padding=0 的同时把 column-gap 也设为 0：
       // 实际列宽=375、gap=0 → 列占位 375 = delta，翻页对齐。
       // 留白通过给块级内容加左右 margin 实现，不改变列布局。
-      const sel = 'p, div, h1, h2, h3, h4, h5, h6, li, blockquote, dl, dd, ul, ol, section, article, figure, pre';
+      const sel = 'p, div, h1, h2, h3, h4, h5, h6, li, blockquote, dl, dd, ul, ol, section, article, figure, pre, span, td, th';
       style.textContent =
-        sel + ' { margin-left: ' + px + 'px !important; margin-right: ' + px + 'px !important; tab-size: 2; }\n' +
+        sel + ' { margin-left: ' + px + 'px !important; margin-right: ' + px + 'px !important; tab-size: 2; overflow-wrap: anywhere; }\n' +
         'body { padding-left: 0px !important; padding-right: 0px !important; column-gap: 0px !important; }';
       // epub.js 会用 setProperty 把 body 的 padding-left/right 写成 !important（inline 优先于 stylesheet），
       // 必须用 setProperty 直接覆盖为 0；同时把 column-gap 归零保持列占位=delta。
