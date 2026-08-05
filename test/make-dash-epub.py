@@ -46,11 +46,11 @@ paras = []
 paras.append('<h1>第一章 出发</h1>')
 # 多段正常文字凑满多页
 for i in range(1, 26):
-    paras.append('<p>第%d段正文。清晨的阳光洒进房间，主角慢慢睁开眼睛，窗外是一片宁静的山村景色，空气里带着露水的味道。' % i)
+    paras.append('<p>第%d段正文。清晨的阳光洒进房间，主角慢慢睁开眼睛，窗外是一片宁静的山村景色，空气里带着露水的味道。</p>' % i)
 # 破折号分隔线（normal 段落）
 paras.append('<p>' + dash + '</p>')
 for i in range(26, 40):
-    paras.append('<p>第%d段正文。他站起身走向窗边，远处的群山在晨雾中若隐若现，这一天的旅程才刚刚开始。' % i)
+    paras.append('<p>第%d段正文。他站起身走向窗边，远处的群山在晨雾中若隐若现，这一天的旅程才刚刚开始。</p>' % i)
 # 又一条破折号分隔线（pre 段落）
 paras.append('<p style="white-space:pre">' + dash + '</p>')
 for i in range(40, 55):
