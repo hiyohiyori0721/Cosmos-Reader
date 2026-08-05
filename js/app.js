@@ -1580,6 +1580,8 @@
       btn.addEventListener('click', () => {
         const el = document.getElementById(btn.dataset.close);
         if (el) el.classList.add('hidden');
+        // 设置面板关闭时同步隐藏遮罩，避免屏幕残留变暗
+        if (el === els.settingsPanel) els.settingsMask.classList.add('hidden');
       });
     });
 
