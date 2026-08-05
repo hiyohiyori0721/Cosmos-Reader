@@ -226,6 +226,7 @@
       r.on('rendered', () => {
         this._attachClickZones();
         this._applyEpubMargin();
+        this._neutralizeTabs();
         this._applyEpubFont();
         this._applyHls();
         this._bindScrolledProgress();
@@ -288,7 +289,7 @@
       // 留白通过给块级内容加左右 margin 实现，不改变列布局。
       const sel = 'p, div, h1, h2, h3, h4, h5, h6, li, blockquote, dl, dd, ul, ol, section, article, figure, pre';
       style.textContent =
-        sel + ' { margin-left: ' + px + 'px !important; margin-right: ' + px + 'px !important; }\n' +
+        sel + ' { margin-left: ' + px + 'px !important; margin-right: ' + px + 'px !important; tab-size: 2; }\n' +
         'body { padding-left: 0px !important; padding-right: 0px !important; column-gap: 0px !important; }';
       // epub.js 会用 setProperty 把 body 的 padding-left/right 写成 !important（inline 优先于 stylesheet），
       // 必须用 setProperty 直接覆盖为 0；同时把 column-gap 归零保持列占位=delta。
@@ -300,6 +301,40 @@
           doc.body.style.setProperty('column-gap', '0px', 'important');
         } catch (_) {}
       }
+    }
+
+    /**
+     * EPUB 内容中过长的制表符会在分页模式下撑出超宽空白，把本页文字挤到下一页、阅读断档。
+     * 这里把内容文档文本节点中的 \t 替换为普通空格（1 字符 → 1 字符，字符偏移不变，
+     * 不影响 CFI 定位与划线），并触发重排；同时注入 tab-size 限制残余 tab 宽度。
+     */
+    _neutralizeTabs() {
+      if (this.mode !== 'epub' || !this.rendition) return;
+      try {
+        this.rendition.getContents().forEach((c) => {
+          const doc = c.document;
+          if (!doc || !doc.body || doc._readerTabNeutralized) return;
+          doc._readerTabNeutralized = true;
+          const walker = doc.createTreeWalker(doc.body, NodeFilter.SHOW_TEXT);
+          let n;
+          let changed = false;
+          while ((n = walker.nextNode())) {
+            if (n.nodeValue && n.nodeValue.indexOf('\t') !== -1) {
+              n.nodeValue = n.nodeValue.replace(/\t/g, ' ');
+              changed = true;
+            }
+          }
+          if (changed) {
+            // 内容变窄后分页列需要重算；延迟 resize 让 epub.js 重新分页
+            setTimeout(() => {
+              try { this.rendition.resize(); } catch (_) {}
+            }, 0);
+            // 布局变化后重绘划线，避免高亮错位
+            this._hlNeedsReflow = true;
+            this._scheduleHlReflow();
+          }
+        });
+      } catch (_) {}
     }
 
     _attachClickZones() {
@@ -556,7 +591,8 @@
         ch.paras.forEach((p) => {
           const el = document.createElement('p');
           el.className = 'txt-para';
-          el.textContent = p;
+          // 过长制表符会撑出超宽空白，替换为普通空格
+          el.textContent = p.replace(/\t/g, ' ');
           section.appendChild(el);
         });
         content.appendChild(section);
