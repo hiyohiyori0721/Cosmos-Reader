@@ -26,12 +26,12 @@
 
   /** 各主题的内容默认背景/文字色（_applyCustomColors 兜底用，不依赖 epub.js select 时机） */
   const READER_THEME_COLORS = {
-    light: { bg: '#ffffff', text: '#2c2c2c' },
-    sepia: { bg: '#f2e8d5', text: '#433422' },
-    dark: { bg: '#1c1c1e', text: '#d6d3cb' },
-    green: { bg: '#e6efe2', text: '#2e3a2b' },
-    blue: { bg: '#e3ecf5', text: '#293846' },
-    ink: { bg: '#121214', text: '#e4e1d9' },
+    light: { bg: '#ffffff', text: '#2c2c2c', accent: '#a97832' },
+    sepia: { bg: '#f2e8d5', text: '#433422', accent: '#a97832' },
+    dark: { bg: '#1c1c1e', text: '#d6d3cb', accent: '#d4a844' },
+    green: { bg: '#e6efe2', text: '#2e3a2b', accent: '#4f8a43' },
+    blue: { bg: '#e3ecf5', text: '#293846', accent: '#3577a8' },
+    ink: { bg: '#121214', text: '#e4e1d9', accent: '#e0a94f' },
   };
 
   /* ---------- TXT 工具 ---------- */
@@ -1377,6 +1377,7 @@
       const tc = READER_THEME_COLORS[theme] || READER_THEME_COLORS.light;
       const bg = this.settings.customBg || tc.bg;
       const text = this.settings.customText || tc.text;
+      const accent = this.settings.customAccent || tc.accent;
       if (this.mode === 'epub' && this.el) {
         // 直接给 iframe body 设 inline 背景/文字色（inline !important 优先级最高，
         // 覆盖书籍 CSS 与 epub.js 主题 style，确保主题总是立即完全生效）
@@ -1385,6 +1386,10 @@
           if (!doc || !doc.body) return;
           doc.body.style.setProperty('background', bg, 'important');
           doc.body.style.setProperty('color', text, 'important');
+          // 强调色：应用到链接（自定义强调色覆盖书籍自身链接色）
+          doc.querySelectorAll('a').forEach((a) => {
+            a.style.setProperty('color', accent, 'important');
+          });
         });
       } else if (this.mode === 'txt' && this.txt) {
         this.txt.container.style.background = bg;
@@ -1393,9 +1398,10 @@
     }
 
     /** 设置自定义主题色（阅读时调用；清空传 null） */
-    setCustomTheme(bg, text) {
+    setCustomTheme(bg, text, accent) {
       this.settings.customBg = bg || null;
       this.settings.customText = text || null;
+      this.settings.customAccent = accent || null;
       if (this.mode === 'txt' && this.txt) {
         this._applyTxtAppearance();
       } else if (this.mode === 'epub') {

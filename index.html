@@ -133,18 +133,47 @@
           <div id="theme-picker-menu" class="picker-menu hidden"></div>
         </div>
       </div>
-      <div class="setting-group">
-        <label>自定义背景</label>
-        <div class="color-row">
-          <input id="custom-bg-input" type="color" value="#ffffff" aria-label="自定义背景" />
-          <button id="btn-bg-reset" class="ghost-btn small" type="button">重置</button>
-        </div>
-      </div>
-      <div class="setting-group">
-        <label>自定义文字颜色</label>
-        <div class="color-row">
-          <input id="custom-text-input" type="color" value="#2c2c2c" aria-label="自定义文字颜色" />
-          <button id="btn-text-reset" class="ghost-btn small" type="button">重置</button>
+      <div class="setting-group" id="custom-colors-section">
+        <button id="custom-colors-toggle" class="collapsible-toggle" type="button" aria-expanded="false">
+          <span>自定义颜色</span>
+          <span class="picker-caret">▸</span>
+        </button>
+        <div id="custom-colors-body" class="collapsible-body hidden">
+          <div class="setting-group">
+            <label>自定义背景</label>
+            <div class="color-row">
+              <input id="custom-bg-input" type="color" value="#ffffff" aria-label="自定义背景" />
+              <button id="btn-bg-reset" class="ghost-btn small" type="button">重置</button>
+            </div>
+          </div>
+          <div class="setting-group">
+            <label>自定义文字颜色</label>
+            <div class="color-row">
+              <input id="custom-text-input" type="color" value="#2c2c2c" aria-label="自定义文字颜色" />
+              <button id="btn-text-reset" class="ghost-btn small" type="button">重置</button>
+            </div>
+          </div>
+          <div class="setting-group">
+            <label>自定义强调色</label>
+            <div class="color-row">
+              <input id="custom-accent-input" type="color" value="#b8860b" aria-label="自定义强调色" />
+              <button id="btn-accent-reset" class="ghost-btn small" type="button">重置</button>
+            </div>
+          </div>
+          <div class="setting-group">
+            <label>自定义边框色</label>
+            <div class="color-row">
+              <input id="custom-border-input" type="color" value="#e4dfd3" aria-label="自定义边框色" />
+              <button id="btn-border-reset" class="ghost-btn small" type="button">重置</button>
+            </div>
+          </div>
+          <div class="setting-group">
+            <label>自定义次要文字色</label>
+            <div class="color-row">
+              <input id="custom-textdim-input" type="color" value="#8a8578" aria-label="自定义次要文字色" />
+              <button id="btn-textdim-reset" class="ghost-btn small" type="button">重置</button>
+            </div>
+          </div>
         </div>
       </div>
       <div class="setting-group">

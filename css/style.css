@@ -407,6 +407,26 @@ input, select { font-family: inherit; }
 .color-row input[type="color"]::-webkit-color-swatch-wrapper { padding: 2px; }
 .color-row input[type="color"]::-webkit-color-swatch { border: none; border-radius: 6px; }
 
+/* 折叠区（自定义颜色） */
+.collapsible-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color .18s ease;
+}
+.collapsible-toggle:hover { border-color: var(--accent); }
+.collapsible-toggle .picker-caret { transition: transform .18s ease; }
+.collapsible-toggle.open .picker-caret { transform: rotate(90deg); }
+.collapsible-body { margin-top: 12px; display: flex; flex-direction: column; gap: 12px; }
+
 input[type="range"] {
   width: 100%;
   accent-color: var(--accent);

@@ -261,6 +261,9 @@
           bookSort: 'recent',
           customBg: null,
           customText: null,
+          customAccent: null,
+          customBorder: null,
+          customTextDim: null,
         },
         lsGet(LS_SETTINGS, {})
       );

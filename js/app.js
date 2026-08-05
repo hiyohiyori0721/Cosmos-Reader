@@ -37,8 +37,17 @@
     settingsPanel: $('settings-panel'),
     customBgInput: $('custom-bg-input'),
     customTextInput: $('custom-text-input'),
+    customAccentInput: $('custom-accent-input'),
+    customBorderInput: $('custom-border-input'),
+    customTextDimInput: $('custom-textdim-input'),
     btnBgReset: $('btn-bg-reset'),
     btnTextReset: $('btn-text-reset'),
+    btnAccentReset: $('btn-accent-reset'),
+    btnBorderReset: $('btn-border-reset'),
+    btnTextDimReset: $('btn-textdim-reset'),
+    customColorsToggle: $('custom-colors-toggle'),
+    customColorsBody: $('custom-colors-body'),
+    customColorsSection: $('custom-colors-section'),
     fontSizeRange: $('font-size-range'),
     fontSizeVal: $('font-size-val'),
     lineHeightRange: $('line-height-range'),
@@ -169,6 +178,14 @@
   let fontBlobUrls = {}; // 自定义字体 id → blob URL
 
   /* ================= 工具 ================= */
+  /** 十六进制颜色 → rgba（自定义强调色派生浅背景用） */
+  function hexToRgba(hex, alpha) {
+    const m = /^#?([0-9a-f]{6})$/i.exec((hex || '').trim());
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    return 'rgba(' + ((n >> 16) & 255) + ', ' + ((n >> 8) & 255) + ', ' + (n & 255) + ', ' + (alpha == null ? 0.18 : alpha) + ')';
+  }
+
   function showToast(msg) {
     els.toast.textContent = msg;
     els.toast.classList.remove('hidden');
@@ -295,29 +312,36 @@
   }
 
   const THEMES = [
-    { v: 'light', label: '白天', cls: 'light', bg: '#ffffff', text: '#2c2c2c' },
-    { v: 'sepia', label: '护眼', cls: 'sepia', bg: '#f2e8d5', text: '#433422' },
-    { v: 'dark', label: '夜间', cls: 'dark', bg: '#1c1c1e', text: '#d6d3cb' },
-    { v: 'green', label: '绿意', cls: 'green', bg: '#e6efe2', text: '#2e3a2b' },
-    { v: 'blue', label: '湛蓝', cls: 'blue', bg: '#e3ecf5', text: '#293846' },
-    { v: 'ink', label: '墨夜', cls: 'ink', bg: '#121214', text: '#e4e1d9' },
+    { v: 'light', label: '白天', cls: 'light', bg: '#ffffff', text: '#2c2c2c', accent: '#b8860b', border: '#e4dfd3', textDim: '#8a8578' },
+    { v: 'sepia', label: '护眼', cls: 'sepia', bg: '#f2e8d5', text: '#433422', accent: '#a97832', border: '#e0d2b4', textDim: '#9a8a6d' },
+    { v: 'dark', label: '夜间', cls: 'dark', bg: '#1c1c1e', text: '#d6d3cb', accent: '#d4a844', border: '#38383c', textDim: '#7c7a72' },
+    { v: 'green', label: '绿意', cls: 'green', bg: '#e6efe2', text: '#2e3a2b', accent: '#4f8a43', border: '#cfddc7', textDim: '#7d8f76' },
+    { v: 'blue', label: '湛蓝', cls: 'blue', bg: '#e3ecf5', text: '#293846', accent: '#3577a8', border: '#cbdae6', textDim: '#7b8f9f' },
+    { v: 'ink', label: '墨夜', cls: 'ink', bg: '#121214', text: '#e4e1d9', accent: '#e0a94f', border: '#333339', textDim: '#7d7b74' },
     { v: 'custom', label: '自定义', cls: 'custom' },
   ];
 
-  /** 是否设置了自定义背景/文字颜色（决定主题选择器是否高亮"自定义"） */
+  /** 是否设置了自定义颜色（决定主题选择器是否高亮"自定义"） */
   function hasCustomColors() {
     const s = Storage.getSettings();
-    return !!(s.customBg || s.customText);
+    return !!(s.customBg || s.customText || s.customAccent || s.customBorder || s.customTextDim);
   }
 
-  /** 主题默认背景/文字色（自定义颜色输入框在无自定义值时显示） */
+  /** 主题默认背景/文字/强调/边框/次要文字色（自定义颜色输入框在无自定义值时显示） */
   function themeColorsOf(v) {
     if (v === 'custom') {
       const s = Storage.getSettings();
-      return { bg: s.customBg || '#ffffff', text: s.customText || '#2c2c2c' };
+      const t = THEMES.find((x) => x.v === s.theme) || THEMES[0];
+      return {
+        bg: s.customBg || '#ffffff',
+        text: s.customText || '#2c2c2c',
+        accent: s.customAccent || t.accent,
+        border: s.customBorder || t.border,
+        textDim: s.customTextDim || t.textDim,
+      };
     }
     const t = THEMES.find((x) => x.v === v) || THEMES[0];
-    return { bg: t.bg, text: t.text };
+    return { bg: t.bg, text: t.text, accent: t.accent, border: t.border, textDim: t.textDim };
   }
 
   /** 主题值 → 显示名 */
@@ -332,8 +356,6 @@
     const cur = hasCustom ? 'custom' : Storage.getSettings().theme;
     els.themePickerMenu.innerHTML = '';
     THEMES.forEach((t) => {
-      // 未选择自定义主题时不显示"自定义"选项
-      if (t.v === 'custom' && !hasCustom) return;
       const o = document.createElement('button');
       o.type = 'button';
       o.className = 'picker-item theme-item' + (t.v === cur ? ' active' : '');
@@ -1435,6 +1457,8 @@
       el.classList.remove('hidden');
       // 设置面板显示遮罩
       els.settingsMask.classList.toggle('hidden', el !== els.settingsPanel);
+      // 打开设置面板时同步自定义颜色区显示（仅"自定义"主题显示）
+      if (el === els.settingsPanel) showCustomColors(hasCustomColors());
       if (name === 'search-panel' || name === 'searchPanel') {
         els.searchInput.focus();
         els.searchInput.select();
@@ -1464,48 +1488,78 @@
     els.volumeKeyToggle.checked = !!s.volumeKeyTurn;
     els.customBgInput.value = s.customBg || themeColorsOf(hasCustomColors() ? 'custom' : s.theme).bg;
     els.customTextInput.value = s.customText || themeColorsOf(hasCustomColors() ? 'custom' : s.theme).text;
+    els.customAccentInput.value = s.customAccent || themeColorsOf(hasCustomColors() ? 'custom' : s.theme).accent;
+    els.customBorderInput.value = s.customBorder || themeColorsOf(hasCustomColors() ? 'custom' : s.theme).border;
+    els.customTextDimInput.value = s.customTextDim || themeColorsOf(hasCustomColors() ? 'custom' : s.theme).textDim;
     updateThemePickerUI();
   }
 
   function applyTheme(theme) {
     if (theme === 'custom') {
-      // 选择"自定义"主题：应用自定义背景/文字色；未设置过则用 light 默认色（可在输入框调整）
+      // 选择"自定义"主题：应用自定义颜色；未设置过则用当前主题默认色（可在输入框调整）
       const s = Storage.getSettings();
+      const t = THEMES.find((x) => x.v === s.theme) || THEMES[0];
       const bg = s.customBg || '#ffffff';
       const text = s.customText || '#2c2c2c';
-      Storage.setSettings({ theme: s.theme || 'light', customBg: bg, customText: text });
+      const accent = s.customAccent || t.accent;
+      const border = s.customBorder || t.border;
+      const textDim = s.customTextDim || t.textDim;
+      Storage.setSettings({ theme: s.theme || 'light', customBg: bg, customText: text, customAccent: accent, customBorder: border, customTextDim: textDim });
       document.body.className = 'theme-' + (s.theme || 'light');
-      if (reader) { try { reader.setCustomTheme(bg, text); } catch (_) {} }
+      if (reader) { try { reader.setCustomTheme(bg, text, accent); } catch (_) {} }
       applyCustomTheme();
+      showCustomColors(true); // 显示自定义颜色区（默认折叠）
       updateThemePickerUI();
       return;
     }
     document.body.className = 'theme-' + theme;
-    // 切换预设主题时清空自定义背景/文字颜色，确保主题完全生效（自定义色会覆盖主题色）
-    Storage.setSettings({ theme, customBg: null, customText: null });
+    // 切换预设主题时清空自定义颜色，确保主题完全生效（自定义色会覆盖主题色）
+    Storage.setSettings({ theme, customBg: null, customText: null, customAccent: null, customBorder: null, customTextDim: null });
     if (reader) {
       try { reader.setTheme(theme); } catch (_) {}
-      try { reader.setCustomTheme(null, null); } catch (_) {}
+      try { reader.setCustomTheme(null, null, null); } catch (_) {}
     }
     applyCustomTheme(); // 同步颜色选择器 UI（显示主题默认色值）
+    showCustomColors(false); // 非自定义主题：隐藏自定义颜色区
     updateThemePickerUI();
   }
 
-  /** 应用自定义背景/文字颜色（设置面板颜色选择器） */
+  /** 展开/折叠自定义颜色区（有自定义色时默认展开） */
+  function toggleCustomColors(force) {
+    const open = force === undefined ? els.customColorsBody.classList.contains('hidden') : !!force;
+    els.customColorsBody.classList.toggle('hidden', !open);
+    els.customColorsToggle.classList.toggle('open', open);
+    els.customColorsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+  }
+
+  /** 自定义颜色区仅在选择"自定义"主题时显示；否则整个隐藏。显示时默认折叠 */
+  function showCustomColors(visible) {
+    els.customColorsSection.classList.toggle('hidden', !visible);
+    if (visible) toggleCustomColors(false);
+  }
+
+  /** 应用自定义背景/文字/强调/边框/次要文字颜色（设置面板颜色选择器） */
   function applyCustomTheme() {
     const s = Storage.getSettings();
-    const hasCustom = !!(s.customBg || s.customText);
+    const hasCustom = hasCustomColors();
     const tc = themeColorsOf(hasCustom ? 'custom' : s.theme);
     els.customBgInput.value = s.customBg || tc.bg;
     els.customTextInput.value = s.customText || tc.text;
+    els.customAccentInput.value = s.customAccent || tc.accent;
+    els.customBorderInput.value = s.customBorder || tc.border;
+    els.customTextDimInput.value = s.customTextDim || tc.textDim;
     // 自定义颜色同步更新主题色：在 body 上覆盖 CSS 变量（主题变量定义于 body.theme-xxx，
     // 需在 body 级 inline 覆盖才能让整个界面生效）；无自定义色时用主题默认色，有则用自定义色
     const b = document.body;
     b.style.setProperty('--bg', tc.bg);
     b.style.setProperty('--surface', tc.bg);
     b.style.setProperty('--text', tc.text);
-    if (reader) { try { reader.setCustomTheme(s.customBg, s.customText); } catch (_) {} }
-    // 重建主题选项（有无"自定义"项随 hasCustom 变化）+ 更新 UI
+    b.style.setProperty('--accent', tc.accent);
+    b.style.setProperty('--accent-soft', hexToRgba(tc.accent, 0.18));
+    b.style.setProperty('--border', tc.border);
+    b.style.setProperty('--text-dim', tc.textDim);
+    if (reader) { try { reader.setCustomTheme(s.customBg, s.customText, s.customAccent); } catch (_) {} }
+    // 重建主题选项 + 更新 UI
     renderThemeOptions();
   }
 
@@ -1556,9 +1610,13 @@
     els.volumeKeyToggle.checked = !!s.volumeKeyTurn;
     els.customBgInput.value = s.customBg || themeColorsOf(hasCustomColors() ? 'custom' : s.theme).bg;
     els.customTextInput.value = s.customText || themeColorsOf(hasCustomColors() ? 'custom' : s.theme).text;
+    els.customAccentInput.value = s.customAccent || themeColorsOf(hasCustomColors() ? 'custom' : s.theme).accent;
+    els.customBorderInput.value = s.customBorder || themeColorsOf(hasCustomColors() ? 'custom' : s.theme).border;
+    els.customTextDimInput.value = s.customTextDim || themeColorsOf(hasCustomColors() ? 'custom' : s.theme).textDim;
     updateThemePickerUI();
 
     renderThemeOptions();
+    showCustomColors(hasCustomColors());
     renderFontOptions();
     renderCustomFontList();
     loadFontAssets();
@@ -1826,13 +1884,28 @@
       els.themePicker.classList.toggle('open', !els.themePickerMenu.classList.contains('hidden'));
     });
 
-    /* 自定义背景 / 自定义文字颜色 */
+    /* 自定义颜色折叠 */
+    els.customColorsToggle.addEventListener('click', () => toggleCustomColors());
+
+    /* 自定义背景 / 自定义文字颜色 / 自定义强调色 */
     els.customBgInput.addEventListener('change', () => {
       Storage.setSettings({ customBg: els.customBgInput.value || null });
       applyCustomTheme();
     });
     els.customTextInput.addEventListener('change', () => {
       Storage.setSettings({ customText: els.customTextInput.value || null });
+      applyCustomTheme();
+    });
+    els.customAccentInput.addEventListener('change', () => {
+      Storage.setSettings({ customAccent: els.customAccentInput.value || null });
+      applyCustomTheme();
+    });
+    els.customBorderInput.addEventListener('change', () => {
+      Storage.setSettings({ customBorder: els.customBorderInput.value || null });
+      applyCustomTheme();
+    });
+    els.customTextDimInput.addEventListener('change', () => {
+      Storage.setSettings({ customTextDim: els.customTextDimInput.value || null });
       applyCustomTheme();
     });
     els.btnBgReset.addEventListener('click', () => {
@@ -1843,6 +1916,21 @@
     els.btnTextReset.addEventListener('click', () => {
       Storage.setSettings({ customText: null });
       els.customTextInput.value = '#2c2c2c';
+      applyCustomTheme();
+    });
+    els.btnAccentReset.addEventListener('click', () => {
+      Storage.setSettings({ customAccent: null });
+      els.customAccentInput.value = '#b8860b';
+      applyCustomTheme();
+    });
+    els.btnBorderReset.addEventListener('click', () => {
+      Storage.setSettings({ customBorder: null });
+      els.customBorderInput.value = '#e4dfd3';
+      applyCustomTheme();
+    });
+    els.btnTextDimReset.addEventListener('click', () => {
+      Storage.setSettings({ customTextDim: null });
+      els.customTextDimInput.value = '#8a8578';
       applyCustomTheme();
     });
 
