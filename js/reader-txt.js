@@ -161,6 +161,7 @@
         let percent = max > 0 ? (c.scrollTop / max) * 100 : 0;
         percent = Math.min(100, Math.max(0, percent));
         this.txt.percent = percent;
+        this.currentPercent = percent;
         const it = v.items[this._virtCenterItem()];
         if (it && it.ci != null && it.pi >= 0) this.currentCfi = TXT_PREFIX + it.ci + ':' + it.pi;
         else this.currentCfi = TXT_PREFIX + Math.round(percent);
@@ -171,6 +172,7 @@
       let percent = max > 0 ? (c.scrollTop / max) * 100 : 0;
       percent = Math.min(100, Math.max(0, percent));
       this.txt.percent = percent;
+      this.currentPercent = percent;
 
       // 视口中心段落 → 精确书签定位 cfi
       const p = this._findCenterPara();

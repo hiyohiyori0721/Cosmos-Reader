@@ -28,6 +28,7 @@
       this.txt = null;             // { chapters, container, content }
       this.pdf = null;             // { container, pages, renderedTo, current, numPages, textCache, pdf }
       this.currentCfi = null;
+      this.currentPercent = 0;    // 最近一次进度（供退出时强制保存）
       this._busy = false;
       this._onResize = null;
       this._txtScroll = null;
@@ -35,6 +36,8 @@
       this._hlList = [];
       this._hlNeedsReflow = false;
       this._hlReflowTimer = null;
+      this._jumpHlCfi = null;   // 跳转临时高亮的 cfi（用于下次跳转前清除，避免叠加）
+      this._suppressProgress = false; // 临时跳转查看期间不更新阅读进度
     }
 
     /* ================= 打开 ================= */
@@ -124,6 +127,7 @@
         this._applyEpubFont();
         this._applyHls();
         this._bindScrolledProgress();
+        this._bindEpubLinks();
       });
       r.on('keyup', (e) => this._onKey(e));
       r.on('selected', (cfi) => {
@@ -301,6 +305,10 @@
 
     _onRelocated(loc) {
       const start = loc.start;
+      // 临时跳转查看（划线/书签/搜索）期间：不更新进度、不修改 currentCfi，
+      // 保持跳转前的进度值，避免退出后停在被查看的位置
+      if (this._suppressProgress) return;
+
       this.currentCfi = start.cfi;
 
       let percent = 0;
@@ -314,6 +322,7 @@
         percent = start.percent * 100;
       }
       percent = Math.min(100, Math.max(0, percent));
+      this.currentPercent = percent;
 
       this.onProgress({ cfi: start.cfi, percent });
 
@@ -535,7 +544,7 @@
       } catch (_) {}
     }
 
-    async goToCfi(cfi, highlight) {
+    async goToCfi(cfi, highlight, saveProgress = true) {
       if (this.mode === 'txt') {
         this._goToTxtCfi(cfi, highlight);
         return;
@@ -546,23 +555,49 @@
         return;
       }
       if (!this.rendition || !cfi) return;
+      // 临时跳转查看（划线/书签/搜索）不覆盖阅读进度：置标志，relocated 时跳过保存
+      const suppress = !saveProgress;
+      if (suppress) this._suppressProgress = true;
+      // 先清除上一次跳转的临时高亮，避免同一位置多次跳转叠加颜色
+      this._clearJumpHl();
       try {
         await this.rendition.display(cfi);
       } catch (e) {
         console.warn('display failed:', e);
+        this._suppressProgress = false;
         return;
       }
       if (highlight) {
+        // 目标位置已有保存划线时不再叠加临时高亮（避免颜色叠加/变色）
+        if (this._hlList.some((h) => h.cfi === cfi)) return;
         try {
           // 样式需通过 styles(attributes) 参数传递，data 参数会写入 dataset（不能含连字符键）
           this.rendition.annotations.highlight(cfi, {}, null, 'epubjs-hl', {
             fill: 'rgba(255, 208, 0, 0.45)',
             'fill-opacity': '0.45',
           });
+          this._jumpHlCfi = cfi;
         } catch (e) {
           console.warn('highlight failed:', e);
         }
       }
+      // 临时跳转结束后清除标志（relocated 异步触发可能晚于 display 返回）
+      if (suppress) {
+        const clear = () => { this._suppressProgress = false; };
+        // rAF 冻结环境可能无 rAF，用 setTimeout 兜底
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(clear);
+        else setTimeout(clear, 50);
+      }
+    }
+
+    /** 清除跳转产生的临时高亮（下次跳转/翻页前调用，避免叠加） */
+    _clearJumpHl() {
+      if (this.mode !== 'epub' || !this.rendition || !this._jumpHlCfi) return;
+      const cfi = this._jumpHlCfi;
+      this._jumpHlCfi = null;
+      // 若该 cfi 已变成保存划线，则不 remove（避免误删），交由 _applyHls 统一管理
+      if (this._hlList.some((h) => h.cfi === cfi)) return;
+      try { this.rendition.annotations.remove(cfi, 'highlight'); } catch (_) {}
     }
 
     goToPercent(percent) {
@@ -603,6 +638,58 @@
       if (!this.book || !href) return;
       try {
         await this.rendition.display(href);
+      } catch (_) {
+        // 容错：部分 EPUB 的目录链接 href 与 spine 不一致（如前导零差异，如 Section01 vs Section001），
+        // 直接 display 会 "No Section Found"，此时按“忽略数字前导零”在 spine 中模糊匹配章节
+        const alt = this._resolveSpineHrefFuzzy(href);
+        if (alt && alt !== href) {
+          try { await this.rendition.display(alt); } catch (_) {}
+        }
+      }
+    }
+
+    /** 在 spine 中按“忽略数字前导零”模糊匹配 href（用于目录链接 href 与 spine 不一致的容错） */
+    _resolveSpineHrefFuzzy(href) {
+      try {
+        const norm = (s) => (s || '').replace(/(\d+)/g, (m) => String(parseInt(m, 10)));
+        const target = norm(href);
+        const spine = this.book && this.book.spine;
+        if (!spine || !spine.each) return null;
+        let match = null;
+        spine.each((it) => {
+          if (match) return;
+          const candidate = it.href || '';
+          if (norm(candidate) === target) match = candidate;
+        });
+        return match;
+      } catch (_) { return null; }
+    }
+
+    /** 接管 EPUB 内容内的链接点击（epub.js 默认按 href 严格匹配 spine，
+     *  部分书的目录链接 href 与 spine 不一致会 "No Section Found"，
+     *  这里统一走带容错的 goToHref） */
+    _bindEpubLinks() {
+      if (this.mode !== 'epub' || !this.rendition) return;
+      try {
+        const contents = this.rendition.getContents();
+        if (!contents || !contents.length) return;
+        contents.forEach((c) => {
+          const doc = c && c.document;
+          if (!doc || doc._readerLinksBound) return;
+          doc._readerLinksBound = true;
+          doc.querySelectorAll('a[href]').forEach((a) => {
+            const href = a.getAttribute('href');
+            if (!href || href.indexOf('mailto:') === 0) return;
+            // 清除 epub.js 用属性赋值的 onclick（其按 href 严格匹配会 No Section Found）
+            if (a.onclick) { try { a.removeAttribute('onclick'); } catch (_) {} }
+            a.addEventListener('click', (e) => {
+              // 阻止 epub.js 默认跳转与同节点其它监听器
+              e.preventDefault();
+              e.stopImmediatePropagation();
+              this.goToHref(href);
+            });
+          });
+        });
       } catch (_) {}
     }
 
@@ -806,6 +893,11 @@
     }
 
     /** 清除段落内已插入的划线 mark 标记 */
+    /** 当前阅读进度（供退出书籍时强制保存） */
+    getProgress() {
+      return { cfi: this.currentCfi, percent: this.currentPercent };
+    }
+
     getCurrentText() {
       if (this.mode === 'txt') {
         if (this.txt.virtual) {

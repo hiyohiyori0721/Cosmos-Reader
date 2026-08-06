@@ -198,6 +198,7 @@
       p.current = page;
       this.currentCfi = PDF_PREFIX + page;
       const percent = Math.min(100, Math.max(0, (page / p.numPages) * 100));
+      this.currentPercent = percent;
       this.onProgress({ cfi: this.currentCfi, percent });
     }
 ,

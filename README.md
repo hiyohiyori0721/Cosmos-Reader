@@ -52,12 +52,12 @@
 
 不想自己构建？从 GitHub Releases 直接下载 Android APK：
 
-- **最新版本 v1.3**：<https://github.com/hiyohiyori0721/Cosmos-Reader/releases/tag/v1.3>
+- **最新版本 v1.3.1**：<https://github.com/hiyohiyori0721/Cosmos-Reader/releases/tag/v1.3.1>
 - Releases 列表：<https://github.com/hiyohiyori0721/Cosmos-Reader/releases>
 
 ---
 
-##�🚀 快速开始
+## 🚀 快速开始
 
 ### 方式一：本地服务器（推荐）
 需要 [Node.js](https://nodejs.org/)。在项目目录运行：

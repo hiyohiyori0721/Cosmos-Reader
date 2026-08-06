@@ -72,6 +72,16 @@
   function backToLibrary() {
     document.body.classList.remove('bars-hidden');
     if (s.autoHideTimer) { clearTimeout(s.autoHideTimer); s.autoHideTimer = null; }
+    // 退出前强制保存当前阅读进度（避免 800ms 节流导致最后翻页位置丢失）
+    if (s.reader && s.currentBookId) {
+      try {
+        const gp = s.reader.getProgress();
+        if (gp && gp.cfi) {
+          Storage.setProgress(s.currentBookId, { cfi: gp.cfi, percent: Math.min(100, Math.max(0, gp.percent)) / 100 });
+          Storage.upsertBookMeta({ id: s.currentBookId, progress: Math.min(100, Math.max(0, gp.percent)) / 100, lastReadAt: Date.now() });
+        }
+      } catch (_) {}
+    }
     if (s.reader) { try { s.reader.destroy(); } catch (_) {} }
     s.reader = null;
     s.currentBookId = null;
@@ -187,7 +197,7 @@
       const go = document.createElement('button');
       go.className = 'bm-goto';
       go.textContent = t('bookmarks.goto');
-      go.addEventListener('click', () => s.reader.goToCfi(bm.cfi, true));
+      go.addEventListener('click', () => s.reader.goToCfi(bm.cfi, true, false));
       const del = document.createElement('button');
       del.className = 'bm-del';
       del.textContent = t('common.delete');
@@ -242,7 +252,7 @@
       }
       btn.innerHTML = display.replace(new RegExp(escapeRegExp(q), 'gi'), (m) => '<span class="hits">' + m + '</span>');
       btn.addEventListener('click', () => {
-        AppState.reader.goToCfi(r.cfi, true);
+        AppState.reader.goToCfi(r.cfi, true, false);
         togglePanel('searchPanel', false);
       });
       els.searchResults.appendChild(btn);
