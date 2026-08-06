@@ -114,6 +114,80 @@
     }
   }
 
+  /* ---------- 工具 ---------- */
+  /** TXT 解码：BOM 识别 + UTF-8 优先，非 UTF-8 在 GBK/Big5/Shift_JIS 间按 U+FFFD 择优（reader/app 共用） */
+  function decodeTxt(buffer) {
+    const bytes = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer);
+    if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
+      return new TextDecoder('utf-8').decode(bytes.subarray(3));
+    }
+    if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) {
+      return new TextDecoder('utf-16le').decode(bytes.subarray(2));
+    }
+    if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) {
+      return new TextDecoder('utf-16be').decode(bytes.subarray(2));
+    }
+    try {
+      return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+    } catch (e) {
+      // UTF-8 fatal 失败可能因输入被截断（多字节字符尾部不完整）而非真非-UTF-8：
+      // 非 fatal 解码，若替换符极少（≤2）说明实为 UTF-8（仅尾部截断丢字），直接返回
+      const utf8Loose = new TextDecoder('utf-8').decode(bytes);
+      if (countReplacement(utf8Loose) <= 2) return utf8Loose;
+      const gbk = new TextDecoder('gbk').decode(bytes);
+      const big5 = new TextDecoder('big5').decode(bytes);
+      const sjis = new TextDecoder('shift_jis').decode(bytes);
+      const gb = countReplacement(gbk);
+      const b5 = countReplacement(big5);
+      const sj = countReplacement(sjis);
+      const min = Math.min(gb, b5, sj);
+      const cands = [];
+      if (gb === min) cands.push('gbk');
+      if (b5 === min) cands.push('big5');
+      if (sj === min) cands.push('sjis');
+      if (cands.length === 1) {
+        return cands[0] === 'gbk' ? gbk : cands[0] === 'big5' ? big5 : sjis;
+      }
+      if (cands.includes('sjis') && hasJapanese(sjis)) return sjis;
+      if (cands.includes('big5') && isTraditional(big5)) return big5;
+      return gbk;
+    }
+  }
+
+  function countReplacement(s) {
+    let n = 0;
+    for (let i = 0; i < s.length; i++) if (s.charCodeAt(i) === 0xFFFD) n++;
+    return n;
+  }
+
+  function hasJapanese(s) {
+    for (let i = 0; i < s.length; i++) {
+      const c = s.charCodeAt(i);
+      if (c >= 0x3040 && c <= 0x30FF) return true;
+    }
+    return false;
+  }
+
+  function isTraditional(s) {
+    const tradChars = '這個說裡時後與為無點書車裏來著國學聽較嗎問門開發長們兩師軍張讓當';
+    const simpChars = '这个说里时候与为无点书车里来着国学听较吗问门开发长们两师军张让当';
+    let t = 0, si = 0;
+    for (let i = 0; i < s.length; i++) {
+      const ch = s[i];
+      if (tradChars.includes(ch)) t++;
+      if (simpChars.includes(ch)) si++;
+    }
+    return t > si;
+  }
+
+  /** 十六进制颜色 → rgba（reader 划线 / app 强调色派生共用；alpha 默认 0.45） */
+  function hexToRgba(hex, alpha) {
+    const m = /^#?([0-9a-f]{6})$/i.exec((hex || '').trim());
+    if (!m) return null;
+    const n = parseInt(m[1], 16);
+    return 'rgba(' + ((n >> 16) & 255) + ', ' + ((n >> 8) & 255) + ', ' + (n & 255) + ', ' + (alpha == null ? 0.45 : alpha) + ')';
+  }
+
   /* ---------- 公开 API ---------- */
   const Storage = {
     /* ---- 书籍文件（IndexedDB） ---- */
@@ -259,6 +333,7 @@
           margin: 4,
           volumeKeyTurn: true,
           bookSort: 'recent',
+          lang: 'zh',
           customBg: null,
           customText: null,
           customAccent: null,
@@ -320,4 +395,6 @@
   };
 
   global.Storage = Storage;
+  global.hexToRgba = hexToRgba;
+  global.decodeTxt = decodeTxt;
 })(window);

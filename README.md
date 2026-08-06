@@ -52,7 +52,7 @@
 
 不想自己构建？从 GitHub Releases 直接下载 Android APK：
 
-- **最新版本 v1.2**：<https://github.com/hiyohiyori0721/Cosmos-Reader/releases/tag/v1.2>
+- **最新版本 v1.3**：<https://github.com/hiyohiyori0721/Cosmos-Reader/releases/tag/v1.3>
 - Releases 列表：<https://github.com/hiyohiyori0721/Cosmos-Reader/releases>
 
 ---
@@ -130,11 +130,30 @@ cd android
 ```
 reader/
 ├── index.html          # 入口页面
-├── css/style.css       # 样式（六套主题 + 自定义、动画）
+├── css/                # 样式（按功能拆分，9 个模块）
+│   ├── variables.css   # 主题变量（:root + 6 套主题）
+│   ├── base.css        # 基础 reset / 滚动条
+│   ├── topbar.css      # 顶部工具栏
+│   ├── reader.css      # 阅读区（EPUB/TXT/PDF/翻页栏/划线/状态条）
+│   ├── panels.css      # 侧边栏面板（目录/书签/搜索）
+│   ├── settings.css    # 设置面板
+│   ├── library.css     # 书籍库 / 卡片 / 多选
+│   ├── modals.css      # 弹窗 / sheet
+│   └── toast.css       # Toast / PWA 提示
 ├── js/
 │   ├── storage.js      # IndexedDB + localStorage 存储 API（含备份）
-│   ├── reader.js       # 阅读器核心（EPUB / TXT / PDF）
-│   └── app.js          # 应用逻辑（书库、导入、面板、设置、交互）
+│   ├── config.js       # 常量配置（主题色/划线色/阈值等）
+│   ├── utils.js        # 工具函数（escapeHtml/formatSize 等）
+│   ├── reader.js       # 阅读器核心（EPUB 渲染/翻页/进度）
+│   ├── reader-pdf.js   # PDF 渲染（pdf.js）
+│   ├── reader-txt.js   # TXT 解析/渲染
+│   ├── reader-virtual.js # 超大 TXT 虚拟化
+│   ├── app-state.js    # DOM 引用 + 全局状态
+│   ├── app-tools.js    # 工具/弹窗/动态加载
+│   ├── app-library.js  # 书库/文件夹/导入/打开
+│   ├── app-settings.js # 主题/字体/自定义色/备份
+│   ├── app-reader.js   # 状态条/目录/书签/搜索
+│   └── app.js          # 入口（初始化 + 事件绑定）
 ├── lib/                # 第三方库（epub.js / pdf.js / jszip）
 ├── www/                # Web 构建副本（Capacitor 用）
 ├── android/            # Capacitor Android 工程

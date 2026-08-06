@@ -1,0 +1,93 @@
+/* Cosmos-Reader — 变量与主题（:root 默认 + 6 套预设主题色） */
+
+/* ============ 变量与主题 ============ */
+:root {
+  --bg: #f7f5f0;
+  --surface: #ffffff;
+  --surface-2: #f0ede6;
+  --surface-glass: rgba(255, 255, 255, 0.58);
+  --text: #2c2c2c;
+  --text-dim: #8a8578;
+  --accent: #b8860b;
+  --accent-soft: #f3e8c8;
+  --border: #e4dfd3;
+  --shadow: 0 8px 30px rgba(60, 50, 20, 0.12);
+  --topbar-h: 56px;
+}
+
+body.theme-sepia {
+  --bg: #f2e8d5;
+  --surface: #faf3e3;
+  --surface-2: #ece0c6;
+  --surface-glass: rgba(250, 243, 227, 0.6);
+  --text: #433422;
+  --text-dim: #9a8a6d;
+  --accent: #a97832;
+  --accent-soft: #ecdcbb;
+  --border: #e0d2b4;
+}
+
+body.theme-dark {
+  --bg: #1c1c1e;
+  --surface: #262628;
+  --surface-2: #2e2e31;
+  --surface-glass: rgba(38, 38, 40, 0.62);
+  --text: #d6d3cb;
+  --text-dim: #7c7a72;
+  --accent: #d4a844;
+  --accent-soft: #3a3424;
+  --border: #38383c;
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+}
+
+body.theme-green {
+  --bg: #e6efe2;
+  --surface: #f3f9f0;
+  --surface-2: #dfeada;
+  --surface-glass: rgba(243, 249, 240, 0.6);
+  --text: #2e3a2b;
+  --text-dim: #7d8f76;
+  --accent: #4f8a43;
+  --accent-soft: #dbe8d2;
+  --border: #cfddc7;
+}
+
+body.theme-blue {
+  --bg: #e3ecf5;
+  --surface: #f2f8fd;
+  --surface-2: #dce8f2;
+  --surface-glass: rgba(242, 248, 253, 0.6);
+  --text: #293846;
+  --text-dim: #7b8f9f;
+  --accent: #3577a8;
+  --accent-soft: #d4e5f3;
+  --border: #cbdae6;
+}
+
+body.theme-ink {
+  --bg: #121214;
+  --surface: #1a1a1d;
+  --surface-2: #222226;
+  --surface-glass: rgba(26, 26, 29, 0.64);
+  --text: #e4e1d9;
+  --text-dim: #7d7b74;
+  --accent: #e0a94f;
+  --accent-soft: #3b3424;
+  --border: #333339;
+  --shadow: 0 8px 30px rgba(0, 0, 0, 0.55);
+}
+
+body.theme-custom {
+  /* 自定义主题：主要变量由 applyCustomTheme 在 body 上内联覆盖；
+     --surface-2/--surface-glass 也由它派生，此处提供白天默认 fallback */
+  --bg: #ffffff;
+  --surface: #ffffff;
+  --surface-2: #f2f2f2;
+  --surface-glass: rgba(255, 255, 255, 0.6);
+  --text: #2c2c2c;
+  --text-dim: #8a8578;
+  --accent: #b8860b;
+  --accent-soft: #f3e8c8;
+  --border: #e4dfd3;
+  --shadow: 0 8px 30px rgba(60, 50, 20, 0.12);
+}

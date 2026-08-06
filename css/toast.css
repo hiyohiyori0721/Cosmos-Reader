@@ -1,0 +1,43 @@
+/* Cosmos-Reader — Toast 提示 / PWA 更新提示条 */
+
+/* ============ Toast ============ */
+.toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 200;
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 22px;
+  font-size: 14px;
+  box-shadow: var(--shadow);
+  animation: toast-in 0.2s ease;
+}
+@keyframes toast-in { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
+
+
+/* PWA 新版本更新提示条 */
+#sw-update-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 28px;
+  transform: translateX(-50%);
+  background: var(--accent, #b8860b);
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 22px;
+  font-size: 14px;
+  z-index: 10000;
+  cursor: pointer;
+  box-shadow: 0 2px 14px rgba(0, 0, 0, 0.28);
+  animation: updatebar-in 0.25s ease;
+  -webkit-tap-highlight-color: transparent;
+}
+@keyframes updatebar-in {
+  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
+  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+

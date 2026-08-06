@@ -1,143 +1,18 @@
 /* ============================================================
- * reader.js — 阅读器核心
- * 支持两种模式：
- *   - epub：基于 epub.js（分页/滚动、CFI 定位）
- *   - txt ：纯文本阅读（滚动渲染、编码检测、章节解析）
- * 负责：加载、渲染、翻页、进度、目录、搜索、外观、书签交互
+ * reader.js — 阅读器核心（EPUB + 通用调度）
+ * 拆分自原单文件 reader.js；PDF/TXT/虚拟化见 reader-pdf/txt/virtual.js
+ * 职责：Reader 类框架、EPUB 渲染、翻页/进度/目录/搜索/高亮/外观/destroy
  * ============================================================ */
 (function (global) {
   'use strict';
 
-  const TXT_PREFIX = 'txt:';
-  const PDF_PREFIX = 'pdf:';
-  const HL_COLORS = {
-    yellow: 'rgba(255, 208, 0, 0.45)',
-    green: 'rgba(76, 175, 80, 0.45)',
-    blue: 'rgba(66, 133, 244, 0.45)',
-  };
-
-  /** 十六进制颜色 → rgba（自定义划线颜色用） */
-  function hexToRgba(hex, alpha) {
-    const m = /^#?([0-9a-f]{6})$/i.exec((hex || '').trim());
-    if (!m) return null;
-    const n = parseInt(m[1], 16);
-    return 'rgba(' + ((n >> 16) & 255) + ', ' + ((n >> 8) & 255) + ', ' + (n & 255) + ', ' + (alpha == null ? 0.45 : alpha) + ')';
-  }
-
-  /** 各主题的内容默认背景/文字色（_applyCustomColors 兜底用，不依赖 epub.js select 时机） */
-  const READER_THEME_COLORS = {
-    light: { bg: '#ffffff', text: '#2c2c2c', accent: '#a97832' },
-    sepia: { bg: '#f2e8d5', text: '#433422', accent: '#a97832' },
-    dark: { bg: '#1c1c1e', text: '#d6d3cb', accent: '#d4a844' },
-    green: { bg: '#e6efe2', text: '#2e3a2b', accent: '#4f8a43' },
-    blue: { bg: '#e3ecf5', text: '#293846', accent: '#3577a8' },
-    ink: { bg: '#121214', text: '#e4e1d9', accent: '#e0a94f' },
-  };
-
-  /* ---------- TXT 工具 ---------- */
-  function decodeTxt(buffer) {
-    const bytes = new Uint8Array(buffer);
-    if (bytes.length >= 3 && bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) {
-      return new TextDecoder('utf-8').decode(bytes.subarray(3));
-    }
-    if (bytes.length >= 2 && bytes[0] === 0xFF && bytes[1] === 0xFE) {
-      return new TextDecoder('utf-16le').decode(bytes.subarray(2));
-    }
-    if (bytes.length >= 2 && bytes[0] === 0xFE && bytes[1] === 0xFF) {
-      return new TextDecoder('utf-16be').decode(bytes.subarray(2));
-    }
-    try {
-      return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
-    } catch (e) {
-      // 非 UTF-8：在 GBK（简体中文）、Big5（繁体中文）、Shift_JIS（日文）间择优
-      const gbk = new TextDecoder('gbk').decode(bytes);
-      const big5 = new TextDecoder('big5').decode(bytes);
-      const sjis = new TextDecoder('shift_jis').decode(bytes);
-      const gb = countReplacement(gbk);
-      const b5 = countReplacement(big5);
-      const sj = countReplacement(sjis);
-      const min = Math.min(gb, b5, sj);
-      const cands = [];
-      if (gb === min) cands.push('gbk');
-      if (b5 === min) cands.push('big5');
-      if (sj === min) cands.push('sjis');
-      if (cands.length === 1) {
-        return cands[0] === 'gbk' ? gbk : cands[0] === 'big5' ? big5 : sjis;
-      }
-      // 多个候选：用特征辅助判断（日文假名 → SJIS；繁体用字 → Big5；否则简体 GBK）
-      if (cands.includes('sjis') && hasJapanese(sjis)) return sjis;
-      if (cands.includes('big5') && isTraditional(big5)) return big5;
-      return gbk;
-    }
-  }
-
-  /** 统计解码结果中的替换字符（非法字节映射为 U+FFFD）数量 */
-  function countReplacement(s) {
-    let n = 0;
-    for (let i = 0; i < s.length; i++) if (s.charCodeAt(i) === 0xFFFD) n++;
-    return n;
-  }
-
-  /** 是否含日文假名（平假名/片假名），用于在 GBK 与 Shift_JIS 间辅助判断 */
-  function hasJapanese(s) {
-    for (let i = 0; i < s.length; i++) {
-      const c = s.charCodeAt(i);
-      if (c >= 0x3040 && c <= 0x30FF) return true; // 平假名/片假名
-    }
-    return false;
-  }
-
-  /** 繁体中文特征检测：简体/繁体常用字命中数对比（命中繁体字更多 → 视为繁体） */
-  function isTraditional(s) {
-    const tradChars = '這個說裡時後與為無點書車裏來著國學聽較嗎問門開發長們兩師軍張讓當';
-    const simpChars = '这个说里时候与为无点书车里来着国学听较吗问门开发长们两师军张让当';
-    let t = 0, si = 0;
-    for (let i = 0; i < s.length; i++) {
-      const ch = s[i];
-      if (tradChars.includes(ch)) t++;
-      if (simpChars.includes(ch)) si++;
-    }
-    return t > si;
-  }
-
-  function parseTxt(text) {
-    const lines = text.split(/\r?\n/);
-    const chapterRe = /^\s*(第[零一二三四五六七八九十百千万两0-9０-９]{1,5}[章节回卷部篇集幕話編]|序章|序言|前言|楔子|引子|尾声|终章|后记|跋|プロローグ|エピローグ|あとがき|前書き|はじめに|終章)[\s：:、.．\-—]*/;
-    const chapters = [];
-    let cur = null;
-    let para = [];
-    const flushPara = () => {
-      const t = para.join('').replace(/\s+/g, ' ').trim();
-      if (t) {
-        if (!cur) { cur = { title: '正文', paras: [] }; chapters.push(cur); }
-        cur.paras.push(t);
-      }
-      para = [];
-    };
-    for (const raw of lines) {
-      const line = raw.trim();
-      if (!line) { flushPara(); continue; }
-      if (chapterRe.test(line) && line.length <= 40) {
-        flushPara();
-        cur = { title: line, paras: [] };
-        chapters.push(cur);
-        continue;
-      }
-      para.push(raw);
-    }
-    flushPara();
-    if (!chapters.length) chapters.push({ title: '正文', paras: [] });
-    return chapters;
-  }
+  const TXT_PREFIX = CosmosConfig.TXT_PREFIX;
+  const PDF_PREFIX = CosmosConfig.PDF_PREFIX;
+  const HL_COLORS = CosmosConfig.HL_COLORS;
+  const READER_THEME_COLORS = CosmosConfig.READER_THEME_COLORS;
 
   class Reader {
-    /**
-     * @param {Object} opts
-     * @param {HTMLElement} opts.el 渲染容器
-     * @param {Object} opts.settings 外观设置
-     * @param {Function} opts.onProgress 进度回调 { cfi, percent }
-     * @param {Function} opts.onChapter 章节回调 { label, href }
-     */
+
     constructor(opts) {
       this.el = opts.el;
       this.settings = opts.settings || {};
@@ -466,293 +341,13 @@
     }
 
     /* ---------- PDF（pdf.js 滚动渲染） ---------- */
-    async _openPdf(arrayBuffer, pageNum) {
-      const pdfjs = globalThis.pdfjsLib;
-      if (!pdfjs) throw new Error('PDF 引擎未加载');
-      const container = document.createElement('div');
-      container.className = 'pdf-reader';
-      this.el.appendChild(container);
-      this.pdf = { container, pages: [], renderedTo: 0, current: 1, numPages: 0, textCache: {}, pdf: null };
-      try {
-        if (!globalThis._pdfWorkerSet) {
-          pdfjs.GlobalWorkerOptions.workerSrc = 'lib/pdf.worker.min.js';
-          globalThis._pdfWorkerSet = true;
-        }
-        const task = pdfjs.getDocument({ data: arrayBuffer });
-        this.pdf.pdf = await task.promise;
-        this.pdf.numPages = this.pdf.pdf.numPages;
-        this._pdfScroll = () => this._onPdfScroll();
-        container.addEventListener('scroll', this._pdfScroll, { passive: true });
-        window.addEventListener('resize', (this._onResize = () => this._reflowPdf()));
-        this._bindTouchSwipe(container);
-        await this._renderMorePdfPages();
-        const target = (typeof pageNum === 'number' && pageNum > 0 && pageNum <= this.pdf.numPages) ? pageNum : 1;
-        await this._goToPdfPage(target);
-        this._updatePdfProgress();
-      } catch (e) {
-        container.innerHTML = '<div class="pdf-error">PDF 解析失败或文件损坏</div>';
-        throw e;
-      }
-    }
-
-    /** 懒加载渲染 PDF 页面（滚动到接近末尾时补充渲染） */
-    async _renderMorePdfPages() {
-      const p = this.pdf;
-      if (!p || !p.pdf) return;
-      const dpr = Math.min(globalThis.devicePixelRatio || 1, 2);
-      const base = this.el.clientWidth > 0 ? this.el.clientWidth : (p.container.clientWidth || 375);
-      const pageW = Math.max(base - 24, 200);
-      while (p.renderedTo < p.numPages) {
-        const n = p.renderedTo + 1;
-        try {
-          const page = await p.pdf.getPage(n);
-          const vp1 = page.getViewport({ scale: 1 });
-          const scale = pageW / vp1.width;
-          const vp = page.getViewport({ scale: scale * dpr });
-          const canvas = document.createElement('canvas');
-          canvas.className = 'pdf-page';
-          canvas.dataset.page = n;
-          canvas.width = Math.max(1, Math.floor(vp.width));
-          canvas.height = Math.max(1, Math.floor(vp.height));
-          canvas.style.width = Math.floor(vp.width / dpr) + 'px';
-          canvas.style.height = Math.floor(vp.height / dpr) + 'px';
-          const ctx = canvas.getContext('2d');
-          p.container.appendChild(canvas);
-          await page.render({ canvasContext: ctx, viewport: vp }).promise;
-          p.pages[n] = { canvas, page, vp };
-          p.renderedTo = n;
-          this._pdfCacheText(n, page);
-        } catch (e) {
-          break;
-        }
-      }
-    }
-
-    /** 缓存某一页文本（书签/搜索用，后台异步） */
-    async _pdfCacheText(n, page) {
-      try {
-        const tc = await page.getTextContent();
-        const txt = tc.items.map((it) => it.str || '').join(' ').replace(/\s+/g, ' ').trim();
-        if (this.pdf) this.pdf.textCache[n] = txt;
-      } catch (_) {}
-    }
-
-    _onPdfScroll() {
-      const p = this.pdf;
-      if (!p) return;
-      const c = p.container;
-      if (p.renderedTo < p.numPages && c.scrollTop + c.clientHeight > c.scrollHeight - c.clientHeight * 1.5) {
-        this._renderMorePdfPages();
-      }
-      this._updatePdfProgress();
-    }
-
-    _updatePdfProgress() {
-      const p = this.pdf;
-      if (!p || !p.numPages) return;
-      const c = p.container;
-      let page = 1;
-      for (let i = 1; i <= p.renderedTo; i++) {
-        const rec = p.pages[i];
-        if (rec && rec.canvas) {
-          if (rec.canvas.offsetTop <= c.scrollTop + 4) page = i;
-          else break;
-        }
-      }
-      p.current = page;
-      this.currentCfi = PDF_PREFIX + page;
-      const percent = Math.min(100, Math.max(0, (page / p.numPages) * 100));
-      this.onProgress({ cfi: this.currentCfi, percent });
-    }
-
-    async _goToPdfPage(n) {
-      const p = this.pdf;
-      if (!p || !p.numPages) return;
-      n = Math.min(Math.max(1, n), p.numPages);
-      if (n > p.renderedTo) await this._renderMorePdfPages();
-      const rec = p.pages[n];
-      if (!rec || !rec.canvas) return;
-      const c = p.container;
-      c.scrollTop = Math.max(0, rec.canvas.offsetTop - 2);
-      this._updatePdfProgress();
-    }
-
-    async _reflowPdf() {
-      const p = this.pdf;
-      if (!p) return;
-      const cur = p.current || 1;
-      p.container.innerHTML = '';
-      p.pages = [];
-      p.renderedTo = 0;
-      await this._renderMorePdfPages();
-      if (cur) await this._goToPdfPage(cur);
-    }
-
-    /* ---------- TXT ---------- */
-    _openTxt(arrayBuffer, percent) {
-      const text = decodeTxt(arrayBuffer);
-      const chapters = parseTxt(text);
-
-      const container = document.createElement('div');
-      container.className = 'txt-reader';
-
-      const content = document.createElement('div');
-      content.className = 'txt-content';
-
-      chapters.forEach((ch, i) => {
-        const section = document.createElement('section');
-        section.className = 'txt-chapter';
-        section.dataset.index = i;
-        const h = document.createElement('h2');
-        h.className = 'txt-chapter-title';
-        h.textContent = ch.title;
-        section.appendChild(h);
-        ch.paras.forEach((p) => {
-          const el = document.createElement('p');
-          el.className = 'txt-para';
-          // 过长制表符会撑出超宽空白，替换为普通空格
-          el.textContent = p.replace(/\t/g, ' ');
-          section.appendChild(el);
-        });
-        content.appendChild(section);
-      });
-
-      container.appendChild(content);
-      this.el.appendChild(container);
-
-      this.txt = { chapters, container, content };
-
-      // 滚动进度
-      this._txtScroll = () => this._updateTxtProgress();
-      container.addEventListener('scroll', this._txtScroll, { passive: true });
-      window.addEventListener('resize', (this._onResize = () => this._updateTxtProgress()));
-
-      this._applyTxtAppearance();
-
-      // 触摸水平滑动翻页
-      this._bindTouchSwipe(container);
-
-      // 选中文本 → 划线（TXT）
-      this._txtSelHandler = () => {
-        if (this.mode !== 'txt' || !this.txt || !this.onSelectedText) return;
-        const sel = window.getSelection();
-        if (!sel || sel.rangeCount === 0 || sel.isCollapsed) return;
-        const range = sel.getRangeAt(0);
-        const node = range.startContainer;
-        if (!node || !this.txt.container.contains(node)) return;
-        const el = node.nodeType === 3 ? node.parentElement : node;
-        const para = el && el.closest ? el.closest('.txt-para') : null;
-        if (!para) return;
-        const sec = para.closest('.txt-chapter');
-        const ci = sec ? parseInt(sec.dataset.index, 10) : 0;
-        const pi = Array.prototype.indexOf.call(sec ? sec.querySelectorAll('.txt-para') : [], para);
-        const off = this._rangeOffsetsInPara(range, para);
-        this.onSelectedText(TXT_PREFIX + ci + ':' + pi + ':' + off.start + ':' + off.end, para.textContent.trim().replace(/\s+/g, ' ').slice(0, 120), false);
-      };
-      document.addEventListener('selectionchange', this._txtSelHandler);
-
-      // 恢复进度
-      if (typeof percent === 'number' && isFinite(percent)) {
-        this.goToPercent(percent);
-      } else {
-        this._updateTxtProgress();
-      }
-    }
-
-    /** 返回最接近视口中心的段落元素 */
-    _findCenterPara() {
-      const c = this.txt.container;
-      const center = c.scrollTop + c.clientHeight / 2;
-      const paras = c.querySelectorAll('.txt-para');
-      let best = null;
-      let bestDist = Infinity;
-      for (const p of paras) {
-        const r = p.getBoundingClientRect();
-        const pcenter = (r.top + r.bottom) / 2;
-        const dist = Math.abs(pcenter - center);
-        if (dist < bestDist) { bestDist = dist; best = p; }
-      }
-      return best;
-    }
-
-    _updateTxtProgress() {
-      const c = this.txt.container;
-      const max = c.scrollHeight - c.clientHeight;
-      let percent = max > 0 ? (c.scrollTop / max) * 100 : 0;
-      percent = Math.min(100, Math.max(0, percent));
-      this.txt.percent = percent;
-
-      // 视口中心段落 → 精确书签定位 cfi
-      const p = this._findCenterPara();
-      if (p) {
-        const sec = p.closest('.txt-chapter');
-        const ci = sec ? parseInt(sec.dataset.index, 10) : 0;
-        const pi = Array.prototype.indexOf.call(sec ? sec.querySelectorAll('.txt-para') : [], p);
-        this.currentCfi = TXT_PREFIX + ci + ':' + pi;
-      } else {
-        this.currentCfi = TXT_PREFIX + Math.round(percent);
-      }
-      this.onProgress({ cfi: this.currentCfi, percent });
-    }
-
-    _goToTxtCfi(cfi, highlight) {
-      if (!cfi || !cfi.startsWith(TXT_PREFIX)) return;
-      const rest = cfi.slice(TXT_PREFIX.length);
-
-      // 章节定位：txt:c:<chapterIndex>
-      if (rest.startsWith('c:')) {
-        const secIndex = parseInt(rest.slice(2), 10);
-        const sections = this.txt.content.querySelectorAll('.txt-chapter');
-        const section = sections[secIndex];
-        if (section) {
-          const container = this.txt.container;
-          const top = section.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
-          container.scrollTo({ top, behavior: 'smooth' });
-          if (highlight) this._flashTxt(section);
-        }
-        return;
-      }
-
-      // 纯百分比形式：txt:<percent>
-      if (rest.indexOf(':') === -1) {
-        const p = parseFloat(rest);
-        if (!isNaN(p)) { this.goToPercent(p); return; }
-      }
-
-      // 段落定位：txt:<chapterIndex>:<paraIndex>
-      const parts = rest.split(':');
-      const secIndex = parseInt(parts[0], 10);
-      const paraIndex = parts.length > 1 ? parseInt(parts[1], 10) : -1;
-      const sections = this.txt.content.querySelectorAll('.txt-chapter');
-      const section = sections[secIndex];
-      if (!section) return;
-      let target = section;
-      if (paraIndex >= 0) {
-        const paras = section.querySelectorAll('.txt-para');
-        if (paras[paraIndex]) target = paras[paraIndex];
-      }
-      // 显式滚动 .txt-reader 容器（scrollIntoView 可能滚错容器）
-      const container = this.txt.container;
-      const top = target.getBoundingClientRect().top - container.getBoundingClientRect().top + container.scrollTop;
-      container.scrollTo({ top, behavior: 'smooth' });
-      if (highlight) this._flashTxt(target);
-    }
-
-    _flashTxt(el) {
-      el.classList.add('txt-highlight');
-      setTimeout(() => el.classList.remove('txt-highlight'), 2200);
-    }
-
-    /* ================= 翻页 / 跳转 ================= */
     next() {
       if (this.mode === 'txt') {
-        const c = this.txt.container;
-        c.scrollBy({ top: c.clientHeight * 0.9, behavior: 'smooth' });
+        this._scrollByCompat(this.txt.container, this.txt.container.scrollTop + this.txt.container.clientHeight * 0.9);
         return;
       }
       if (this.mode === 'pdf') {
-        const c = this.pdf.container;
-        c.scrollBy({ top: c.clientHeight * 0.9, behavior: 'smooth' });
+        this._scrollByCompat(this.pdf.container, this.pdf.container.scrollTop + this.pdf.container.clientHeight * 0.9);
         return;
       }
       // 连续滚动模式下：未到底时滚动一屏，到底后再翻才进入下一章
@@ -772,13 +367,11 @@
 
     prev() {
       if (this.mode === 'txt') {
-        const c = this.txt.container;
-        c.scrollBy({ top: -c.clientHeight * 0.9, behavior: 'smooth' });
+        this._scrollByCompat(this.txt.container, this.txt.container.scrollTop - this.txt.container.clientHeight * 0.9);
         return;
       }
       if (this.mode === 'pdf') {
-        const c = this.pdf.container;
-        c.scrollBy({ top: -c.clientHeight * 0.9, behavior: 'smooth' });
+        this._scrollByCompat(this.pdf.container, this.pdf.container.scrollTop - this.pdf.container.clientHeight * 0.9);
         return;
       }
       // 连续滚动模式下：未到顶时向上滚动一屏，到顶后再翻才回到上一章
@@ -794,6 +387,19 @@
       if (!this.rendition || this._busy) return;
       this._busy = true;
       this.rendition.prev().catch(() => {}).finally(() => { this._busy = false; });
+    }
+
+    /** 平滑滚动（兼容 rAF 冻结环境：smooth 未执行时回退直接定位，真机动画不受影响） */
+    _scrollByCompat(el, to) {
+      if (!el) return;
+      const from = el.scrollTop;
+      const max = Math.max(0, el.scrollHeight - el.clientHeight);
+      to = Math.max(0, Math.min(max, to));
+      if (Math.abs(to - from) < 1) return;
+      el.scrollTo({ top: to, behavior: 'smooth' });
+      setTimeout(() => {
+        if (Math.abs(el.scrollTop - from) < 1) el.scrollTop = to;
+      }, 220);
     }
 
     /** 分页模式翻页动画：平滑滑动到相邻页；到章节边界才切换章节 */
@@ -833,20 +439,41 @@
       this._animateScrollTo(c, target, 150);
     }
 
-    /** 快速翻页动画：rAF 平滑滚动（~150ms，比原生 smooth 更快） */
+    /** 快速翻页动画：优先 rAF 平滑滚动（~150ms）；rAF 冻结环境（嵌入式浏览器）用 setInterval 兜底驱动，保证横向滑动动画在所有环境可见 */
     _animateScrollTo(el, to, duration) {
       if (this._turnAnimId) { cancelAnimationFrame(this._turnAnimId); this._turnAnimId = null; }
+      if (this._turnTimer) { clearInterval(this._turnTimer); this._turnTimer = null; }
       const from = el.scrollLeft;
       const start = performance.now();
       const dur = duration || 150;
       const ease = (t) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+      let rafActive = false;  // rAF 是否已在驱动
+      let timerActive = false; // interval 是否已接管
+      const finish = () => {
+        el.scrollLeft = to;
+        if (this._turnAnimId) { cancelAnimationFrame(this._turnAnimId); this._turnAnimId = null; }
+        if (this._turnTimer) { clearInterval(this._turnTimer); this._turnTimer = null; }
+      };
       const step = (now) => {
+        rafActive = true;
+        if (timerActive) return; // interval 已接管，rAF 让路
         const p = Math.min(1, (now - start) / dur);
         el.scrollLeft = from + (to - from) * ease(p);
-        if (p < 1) { this._turnAnimId = requestAnimationFrame(step); }
-        else { this._turnAnimId = null; el.scrollLeft = to; }
+        if (p < 1) this._turnAnimId = requestAnimationFrame(step);
+        else finish();
       };
       this._turnAnimId = requestAnimationFrame(step);
+      // rAF 冻结环境兜底：rAF 未及时触发则用 setInterval 驱动动画（而非直接跳转）
+      this._turnTimer = setInterval(() => {
+        if (rafActive) { // rAF 正常，自停
+          if (this._turnTimer) { clearInterval(this._turnTimer); this._turnTimer = null; }
+          return;
+        }
+        timerActive = true;
+        const p = Math.min(1, (performance.now() - start) / dur);
+        el.scrollLeft = from + (to - from) * ease(p);
+        if (p >= 1) finish();
+      }, 16);
     }
 
     /** 连续滚动（EPUB）模式下一屏滚动；到达章节边界时跳转章节 */
@@ -940,6 +567,12 @@
 
     goToPercent(percent) {
       if (this.mode === 'txt') {
+        if (this.txt.virtual) {
+          const v = this.txt.virtual;
+          const max = Math.max(0, v.total - this.txt.container.clientHeight);
+          this._scrollTxtToVirtual(max * (percent / 100), false);
+          return;
+        }
         const c = this.txt.container;
         const max = c.scrollHeight - c.clientHeight;
         c.scrollTop = max * (percent / 100);
@@ -1037,48 +670,6 @@
           if (matches && matches.length) results.push(...matches);
           section.unload();
         } catch (_) {}
-      }
-      return results;
-    }
-
-    _searchTxt(query) {
-      if (!this.txt || !query) return [];
-      const q = query.toLowerCase();
-      const results = [];
-      this.txt.chapters.forEach((ch, ci) => {
-        ch.paras.forEach((p, pi) => {
-          const idx = p.toLowerCase().indexOf(q);
-          if (idx > -1) {
-            const s = Math.max(0, idx - 20);
-            const excerpt = (s > 0 ? '…' : '') + p.slice(s, idx + q.length + 40) + '…';
-            results.push({ cfi: TXT_PREFIX + ci + ':' + pi, excerpt });
-          }
-        });
-      });
-      return results;
-    }
-
-    /** PDF 全文搜索（按页提取文本） */
-    async _searchPdf(query) {
-      if (!this.pdf || !query) return [];
-      const q = query.toLowerCase();
-      const results = [];
-      for (let n = 1; n <= this.pdf.numPages; n++) {
-        let txt = this.pdf.textCache[n];
-        if (txt === undefined) {
-          try {
-            const page = await this.pdf.pdf.getPage(n);
-            const tc = await page.getTextContent();
-            txt = tc.items.map((it) => it.str || '').join(' ').replace(/\s+/g, ' ').trim();
-            if (this.pdf) this.pdf.textCache[n] = txt;
-          } catch (_) { txt = ''; }
-        }
-        const idx = txt.toLowerCase().indexOf(q);
-        if (idx > -1) {
-          const s = Math.max(0, idx - 20);
-          const excerpt = (s > 0 ? '…' : '') + txt.slice(s, idx + q.length + 40) + '…';
-          results.push({ cfi: PDF_PREFIX + n, excerpt });
-        }
       }
       return results;
     }
@@ -1215,80 +806,12 @@
     }
 
     /** 清除段落内已插入的划线 mark 标记 */
-    _clearTxtParaMarks(para) {
-      para.querySelectorAll('.txt-hl').forEach((m) => {
-        const parent = m.parentNode;
-        parent.replaceChild(document.createTextNode(m.textContent), m);
-        parent.normalize();
-      });
-      para.style.background = '';
-    }
-
-    /** 用 mark 包裹段落中 [s,e) 范围的文字并上色 */
-    _markTxtRange(para, s, e, color) {
-      const rgba = HL_COLORS[color] || hexToRgba(color, 0.45) || HL_COLORS.yellow;
-      const textNodes = [];
-      const walker = document.createTreeWalker(para, NodeFilter.SHOW_TEXT);
-      while (walker.nextNode()) textNodes.push(walker.currentNode);
-      let pos = 0;
-      for (const node of textNodes) {
-        const len = node.nodeValue.length;
-        const nodeStart = pos;
-        const nodeEnd = pos + len;
-        pos = nodeEnd;
-        if (nodeEnd <= s || nodeStart >= e) continue;
-        const cutS = Math.max(s, nodeStart) - nodeStart;
-        const cutE = Math.min(e, nodeEnd) - nodeStart;
-        if (cutS >= cutE) continue;
-        const mark = document.createElement('mark');
-        mark.className = 'txt-hl';
-        mark.style.background = rgba;
-        mark.style.borderRadius = '3px';
-        const hl = node.splitText(cutS);
-        hl.splitText(cutE - cutS);
-        hl.parentNode.replaceChild(mark, hl);
-        mark.appendChild(hl);
-      }
-      para.normalize();
-    }
-
-    _applyTxtHighlight(cfi, color) {
-      const parts = cfi && cfi.indexOf(TXT_PREFIX) === 0 ? cfi.slice(TXT_PREFIX.length).split(':') : [];
-      const ci = parseInt(parts[0], 10);
-      const pi = parseInt(parts[1], 10);
-      const s = parts.length >= 4 ? parseInt(parts[2], 10) : null;
-      const e = parts.length >= 4 ? parseInt(parts[3], 10) : null;
-      const sec = this.txt.content.querySelectorAll('.txt-chapter')[ci];
-      const para = sec ? sec.querySelectorAll('.txt-para')[pi] : null;
-      if (!para) return;
-      // 先清除该段已有划线标记
-      this._clearTxtParaMarks(para);
-      para.classList.remove('txt-hl');
-      const colorVal = color || 'yellow';
-      if (s == null || e == null || s >= e) {
-        // 旧格式或无偏移：整段划线（inline 上色）
-        para.classList.add('txt-hl');
-        para.style.background = HL_COLORS[colorVal] || hexToRgba(colorVal, 0.45) || HL_COLORS.yellow;
-        return;
-      }
-      this._markTxtRange(para, s, e, colorVal);
-    }
-
-    _removeTxtHighlight(cfi) {
-      const parts = cfi && cfi.indexOf(TXT_PREFIX) === 0 ? cfi.slice(TXT_PREFIX.length).split(':') : [];
-      const ci = parseInt(parts[0], 10);
-      const pi = parseInt(parts[1], 10);
-      const sec = this.txt.content.querySelectorAll('.txt-chapter')[ci];
-      const para = sec ? sec.querySelectorAll('.txt-para')[pi] : null;
-      if (para) {
-        para.classList.remove('txt-hl');
-        this._clearTxtParaMarks(para);
-      }
-    }
-
-    /** 提取当前视口中心的正文文本（书签文字） */
     getCurrentText() {
       if (this.mode === 'txt') {
+        if (this.txt.virtual) {
+          const it = this.txt.virtual.items[this._virtCenterItem()];
+          return it && it.pi >= 0 ? it.text.trim().slice(0, 120) : '';
+        }
         const p = this._findCenterPara();
         return p ? p.textContent.trim().slice(0, 120) : '';
       }
@@ -1313,19 +836,6 @@
     }
 
     /* ================= 外观 ================= */
-    _applyTxtAppearance() {
-      const s = this.settings;
-      const content = this.txt.content;
-      content.style.fontSize = (s.fontSize || 18) + 'px';
-      content.style.lineHeight = String(s.lineHeight || 1.8);
-      const margin = (typeof s.margin === 'number' ? s.margin : 4);
-      content.style.paddingLeft = margin + 'vw';
-      content.style.paddingRight = margin + 'vw';
-      const res = this._resolveFont(s.fontFamily);
-      content.style.fontFamily = res ? res.family : '';
-      this._applyCustomColors();
-    }
-
     _applyAppearance() {
       const s = this.settings;
       const themes = this.rendition.themes;
@@ -1466,6 +976,7 @@
       this.settings.fontSize = px;
       if (this.mode === 'txt') {
         if (this.txt) this.txt.content.style.fontSize = px + 'px';
+        if (this.txt && this.txt.virtual) this._rebuildTxtVirtualLayout();
         return;
       }
       if (this.rendition) {
@@ -1480,6 +991,7 @@
       this.settings.lineHeight = lh;
       if (this.mode === 'txt') {
         if (this.txt) this.txt.content.style.lineHeight = String(lh);
+        if (this.txt && this.txt.virtual) this._rebuildTxtVirtualLayout();
         return;
       }
       if (this.rendition) {
@@ -1497,6 +1009,7 @@
           this.txt.content.style.paddingLeft = pct + 'vw';
           this.txt.content.style.paddingRight = pct + 'vw';
         }
+        if (this.txt && this.txt.virtual) this._rebuildTxtVirtualLayout();
         return;
       }
       if (this.rendition) {
@@ -1511,6 +1024,7 @@
       const res = this._resolveFont(fam);
       if (this.mode === 'txt') {
         if (this.txt) this.txt.content.style.fontFamily = res ? res.family : '';
+        if (this.txt && this.txt.virtual) this._rebuildTxtVirtualLayout();
         return;
       }
       if (this.rendition && fam !== 'default') {

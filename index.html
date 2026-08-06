@@ -4,29 +4,40 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cosmos-Reader</title>
-  <link rel="stylesheet" href="css/style.css" />
+  <meta name="theme-color" content="#b8860b" />
+  <link rel="manifest" href="manifest.webmanifest" />
+  <link rel="icon" href="icon-192.png" type="image/png" />
+        <link rel="stylesheet" href="css/variables.css?v=20260825" />
+    <link rel="stylesheet" href="css/base.css?v=20260825" />
+    <link rel="stylesheet" href="css/topbar.css?v=20260825" />
+    <link rel="stylesheet" href="css/reader.css?v=20260825" />
+    <link rel="stylesheet" href="css/panels.css?v=20260825" />
+    <link rel="stylesheet" href="css/settings.css?v=20260825" />
+    <link rel="stylesheet" href="css/library.css?v=20260825" />
+    <link rel="stylesheet" href="css/modals.css?v=20260825" />
+    <link rel="stylesheet" href="css/toast.css?v=20260825" />
 </head>
 <body>
   <!-- 顶部工具栏（阅读模式） -->
   <header id="topbar" class="topbar hidden">
     <div class="topbar-left">
-      <button id="btn-back" class="icon-btn" title="返回书库" aria-label="返回书库">
+      <button id="btn-back" class="icon-btn" title="返回书库" aria-label="返回书库" data-i18n-title="common.backToLibrary" data-i18n-aria="common.backToLibrary">
         <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.41 16.59 10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
       </button>
       <div id="book-title" class="book-title">未命名</div>
       <div id="book-author" class="book-author"></div>
     </div>
     <div class="topbar-right">
-      <button id="btn-search" class="icon-btn" title="搜索 (Ctrl+F)" aria-label="搜索">
+      <button id="btn-search" class="icon-btn" title="搜索 (Ctrl+F)" aria-label="搜索" data-i18n-title="topbar.search" data-i18n-aria="topbar.search">
         <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
       </button>
-      <button id="btn-toc" class="icon-btn" title="目录" aria-label="目录">
+      <button id="btn-toc" class="icon-btn" title="目录" aria-label="目录" data-i18n-title="topbar.toc" data-i18n-aria="topbar.toc">
         <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M3 13h2v-2H3zm0 4h2v-2H3zm0-8h2V7H3zm4 4h14v-2H7zm0 4h14v-2H7zM7 7v2h14V7z"/></svg>
       </button>
-      <button id="btn-bookmarks" class="icon-btn" title="书签与笔记" aria-label="书签与笔记">
+      <button id="btn-bookmarks" class="icon-btn" title="书签与笔记" aria-label="书签与笔记" data-i18n-title="topbar.bookmarks" data-i18n-aria="topbar.bookmarks">
         <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M17 3H7a2 2 0 0 0-2 2v16l7-3 7 3V5a2 2 0 0 0-2-2z"/></svg>
       </button>
-      <button id="btn-settings" class="icon-btn" title="外观设置" aria-label="外观设置">
+      <button id="btn-settings" class="icon-btn" title="外观设置" aria-label="外观设置" data-i18n-title="topbar.appearance" data-i18n-aria="topbar.appearance">
         <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M19.14 12.94a7.5 7.5 0 0 0 .06-1.88l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.3 7.3 0 0 0-1.62-.94l-.36-2.54a.5.5 0 0 0-.5-.43h-3.84a.5.5 0 0 0-.5.43l-.36 2.54c-.58.24-1.12.56-1.62.94l-2.39-.96a.5.5 0 0 0-.6.22L2.65 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.5 7.5 0 0 0 0 1.88l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.23.39.33.6.22l2.39-.96c.5.38 1.04.7 1.62.94l.36 2.54c.04.24.25.43.5.43h3.84c.25 0 .46-.19.5-.43l.36-2.54c.58-.24 1.12-.56 1.62-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64zM12 15.5A3.5 3.5 0 1 1 15.5 12 3.5 3.5 0 0 1 12 15.5z"/></svg>
       </button>
     </div>
@@ -37,15 +48,15 @@
     <div id="reader"></div>
     <!-- 划线操作条（选中文本后显示） -->
     <div id="hl-bar" class="hl-bar hidden">
-      <button class="hl-color" data-color="yellow" aria-label="黄色">🟡</button>
-      <button class="hl-color" data-color="green" aria-label="绿色">🟢</button>
-      <button class="hl-color" data-color="blue" aria-label="蓝色">🔵</button>
-      <label class="hl-custom" title="自定义颜色" aria-label="自定义颜色">
+      <button class="hl-color" data-color="yellow" aria-label="黄色" data-i18n-aria="hl.yellow">🟡</button>
+      <button class="hl-color" data-color="green" aria-label="绿色" data-i18n-aria="hl.green">🟢</button>
+      <button class="hl-color" data-color="blue" aria-label="蓝色" data-i18n-aria="hl.blue">🔵</button>
+      <label class="hl-custom" title="自定义颜色" aria-label="自定义颜色" data-i18n-title="hl.custom" data-i18n-aria="hl.custom">
         <span class="hl-custom-icon">🎨</span>
         <input type="color" id="hl-color-input" value="#ff00ff" />
       </label>
-      <button id="hl-clear" class="hl-clear" aria-label="清除划线" title="清除划线">🚫</button>
-      <button id="hl-cancel" class="hl-cancel" aria-label="取消">✕</button>
+      <button id="hl-clear" class="hl-clear" aria-label="清除划线" title="清除划线" data-i18n-title="hl.clear" data-i18n-aria="hl.clear">🚫</button>
+      <button id="hl-cancel" class="hl-cancel" aria-label="取消" data-i18n-aria="hl.cancel">✕</button>
     </div>
     <!-- 阅读状态（时间 / 电量） -->
     <div id="reader-status" class="reader-status hidden">
@@ -59,14 +70,14 @@
       </span>
     </div>
     <!-- 底部翻页栏（触摸友好） -->
-    <nav id="page-nav" class="page-nav" aria-label="翻页">
-      <button id="btn-prev" class="page-nav-btn" title="上一页 (←)" aria-label="上一页">
+    <nav id="page-nav" class="page-nav" aria-label="翻页" data-i18n-aria="nav.pagination">
+      <button id="btn-prev" class="page-nav-btn" title="上一页 (←)" aria-label="上一页" data-i18n-title="nav.prev" data-i18n-aria="nav.prev">
         <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
-        <span>上一页</span>
+        <span data-i18n="nav.prev">上一页</span>
       </button>
       <span id="progress-text" class="page-nav-progress">0%</span>
-      <button id="btn-next" class="page-nav-btn" title="下一页 (→)" aria-label="下一页">
-        <span>下一页</span>
+      <button id="btn-next" class="page-nav-btn" title="下一页 (→)" aria-label="下一页" data-i18n-title="nav.next" data-i18n-aria="nav.next">
+        <span data-i18n="nav.next">下一页</span>
         <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z"/></svg>
       </button>
     </nav>
@@ -75,8 +86,8 @@
   <!-- 左侧边栏：目录 -->
   <aside id="panel-toc" class="side-panel left hidden">
     <div class="panel-header">
-      <span>目录</span>
-      <button class="icon-btn panel-close" data-close="panel-toc" aria-label="关闭">
+      <span data-i18n="toc.title">目录</span>
+      <button class="icon-btn panel-close" data-close="panel-toc" aria-label="关闭" data-i18n-aria="common.close">
         <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
       </button>
     </div>
@@ -86,13 +97,13 @@
   <!-- 右侧边栏：书签与笔记 -->
   <aside id="panel-bookmarks" class="side-panel right hidden">
     <div class="panel-header">
-      <span>书签与笔记</span>
-      <button class="icon-btn panel-close" data-close="panel-bookmarks" aria-label="关闭">
+      <span data-i18n="bookmarks.title">书签与笔记</span>
+      <button class="icon-btn panel-close" data-close="panel-bookmarks" aria-label="关闭" data-i18n-aria="common.close">
         <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
       </button>
     </div>
     <div class="panel-body">
-      <button id="btn-add-bookmark" class="action-btn">＋ 在当前页添加书签</button>
+      <button id="btn-add-bookmark" class="action-btn" data-i18n="bookmarks.add">＋ 在当前页添加书签</button>
       <div id="bookmark-list" class="bookmark-list"></div>
     </div>
   </aside>
@@ -100,11 +111,11 @@
   <!-- 搜索面板 -->
   <div id="search-panel" class="search-panel hidden">
     <div class="search-box">
-      <input id="search-input" type="text" placeholder="搜索书中内容…" autocomplete="off" />
+      <input id="search-input" type="text" placeholder="搜索书中内容…" autocomplete="off" data-i18n-placeholder="search.placeholder" />
       <button id="btn-search-go" class="icon-btn" aria-label="搜索">
         <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.5 14h-.79l-.28-.27a6.5 6.5 0 1 0-.7.7l.27.28v.79l5 4.99L20.49 19zm-6 0A4.5 4.5 0 1 1 14 9.5 4.5 4.5 0 0 1 9.5 14z"/></svg>
       </button>
-      <button id="btn-search-close" class="icon-btn" aria-label="关闭搜索">
+      <button id="btn-search-close" class="icon-btn" aria-label="关闭搜索" data-i18n-aria="search.close">
         <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
       </button>
     </div>
@@ -117,14 +128,14 @@
   <!-- 设置面板 -->
   <div id="settings-panel" class="settings-panel hidden">
     <div class="panel-header">
-      <span>外观设置</span>
-      <button class="icon-btn panel-close" data-close="settings-panel" aria-label="关闭">
+      <span data-i18n="settings.title">外观设置</span>
+      <button class="icon-btn panel-close" data-close="settings-panel" aria-label="关闭" data-i18n-aria="common.close">
         <svg viewBox="0 0 24 24" width="18" height="18"><path fill="currentColor" d="M19 6.41 17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>
       </button>
     </div>
     <div class="settings-body">
       <div class="setting-group">
-        <label>主题</label>
+        <label data-i18n="settings.theme">主题</label>
         <div id="theme-picker" class="picker">
           <button id="theme-picker-btn" class="picker-btn" type="button">
             <span id="theme-picker-label">白天</span>
@@ -135,61 +146,61 @@
       </div>
       <div class="setting-group" id="custom-colors-section">
         <button id="custom-colors-toggle" class="collapsible-toggle" type="button" aria-expanded="false">
-          <span>自定义颜色</span>
+          <span data-i18n="settings.customColors">自定义颜色</span>
           <span class="picker-caret">▸</span>
         </button>
         <div id="custom-colors-body" class="collapsible-body hidden">
           <div class="setting-group">
-            <label>自定义背景</label>
+            <label data-i18n="settings.customBg">自定义背景</label>
             <div class="color-row">
               <input id="custom-bg-input" type="color" value="#ffffff" aria-label="自定义背景" />
-              <button id="btn-bg-reset" class="ghost-btn small" type="button">重置</button>
+              <button id="btn-bg-reset" class="ghost-btn small" type="button" data-i18n="common.reset">重置</button>
             </div>
           </div>
           <div class="setting-group">
-            <label>自定义文字颜色</label>
+            <label data-i18n="settings.customText">自定义文字颜色</label>
             <div class="color-row">
               <input id="custom-text-input" type="color" value="#2c2c2c" aria-label="自定义文字颜色" />
-              <button id="btn-text-reset" class="ghost-btn small" type="button">重置</button>
+              <button id="btn-text-reset" class="ghost-btn small" type="button" data-i18n="common.reset">重置</button>
             </div>
           </div>
           <div class="setting-group">
-            <label>自定义强调色</label>
+            <label data-i18n="settings.customAccent">自定义强调色</label>
             <div class="color-row">
               <input id="custom-accent-input" type="color" value="#b8860b" aria-label="自定义强调色" />
-              <button id="btn-accent-reset" class="ghost-btn small" type="button">重置</button>
+              <button id="btn-accent-reset" class="ghost-btn small" type="button" data-i18n="common.reset">重置</button>
             </div>
           </div>
           <div class="setting-group">
-            <label>自定义边框色</label>
+            <label data-i18n="settings.customBorder">自定义边框色</label>
             <div class="color-row">
               <input id="custom-border-input" type="color" value="#e4dfd3" aria-label="自定义边框色" />
-              <button id="btn-border-reset" class="ghost-btn small" type="button">重置</button>
+              <button id="btn-border-reset" class="ghost-btn small" type="button" data-i18n="common.reset">重置</button>
             </div>
           </div>
           <div class="setting-group">
-            <label>自定义次要文字色</label>
+            <label data-i18n="settings.customTextDim">自定义次要文字色</label>
             <div class="color-row">
               <input id="custom-textdim-input" type="color" value="#8a8578" aria-label="自定义次要文字色" />
-              <button id="btn-textdim-reset" class="ghost-btn small" type="button">重置</button>
+              <button id="btn-textdim-reset" class="ghost-btn small" type="button" data-i18n="common.reset">重置</button>
             </div>
           </div>
         </div>
       </div>
       <div class="setting-group">
-        <label>字号 <span id="font-size-val" class="setting-val"></span></label>
+        <label><span data-i18n="settings.fontSize">字号</span> <span id="font-size-val" class="setting-val"></span></label>
         <input id="font-size-range" type="range" min="12" max="32" step="1" value="18" />
       </div>
       <div class="setting-group">
-        <label>行距 <span id="line-height-val" class="setting-val"></span></label>
+        <label><span data-i18n="settings.lineHeight">行距</span> <span id="line-height-val" class="setting-val"></span></label>
         <input id="line-height-range" type="range" min="1.2" max="2.6" step="0.1" value="1.8" />
       </div>
       <div class="setting-group">
-        <label>左右留白 <span id="margin-val" class="setting-val"></span></label>
+        <label><span data-i18n="settings.margin">左右留白</span> <span id="margin-val" class="setting-val"></span></label>
         <input id="margin-range" type="range" min="0" max="20" step="1" value="4" />
       </div>
       <div class="setting-group">
-        <label>字体</label>
+        <label data-i18n="settings.font">字体</label>
         <div id="font-picker" class="picker">
           <button id="font-picker-btn" class="picker-btn" type="button">
             <span id="font-picker-label">跟随书籍</span>
@@ -199,40 +210,50 @@
         </div>
       </div>
       <div class="setting-group">
-        <label>自定义字体</label>
-        <button id="btn-import-font" class="ghost-btn small" type="button">＋ 导入字体</button>
+        <label data-i18n="settings.customFont">自定义字体</label>
+        <button id="btn-import-font" class="ghost-btn small" type="button" data-i18n="settings.importFont">＋ 导入字体</button>
         <input id="font-file-input" type="file" accept=".ttf,.otf,.woff,.woff2,font/ttf,font/otf,font/woff,font/woff2" hidden />
         <div id="custom-font-list" class="custom-font-list"></div>
-        <p class="font-tip">支持 TTF / OTF / WOFF / WOFF2，导入后在「字体」中选择使用</p>
+        <p class="font-tip" data-i18n="settings.fontTip">支持 TTF / OTF / WOFF / WOFF2，导入后在「字体」中选择使用</p>
       </div>
       <div class="setting-group">
-        <label>阅读模式</label>
+        <label data-i18n="settings.readMode">阅读模式</label>
         <div id="flow-seg" class="segmented">
-          <button class="seg-btn" data-flow="paginated" type="button">分页</button>
-          <button class="seg-btn" data-flow="scrolled" type="button">连续滚动</button>
+          <button class="seg-btn" data-flow="paginated" type="button" data-i18n="settings.paginated">分页</button>
+          <button class="seg-btn" data-flow="scrolled" type="button" data-i18n="settings.scrolled">连续滚动</button>
         </div>
       </div>
       <div class="setting-group setting-switch">
-        <label for="volume-key-toggle">音量键翻页</label>
+        <label for="volume-key-toggle" data-i18n="settings.volumeKey">音量键翻页</label>
         <input id="volume-key-toggle" type="checkbox" />
       </div>
       <div class="setting-group">
-        <label>数据备份</label>
+        <label data-i18n="settings.backup">数据备份</label>
         <div class="backup-actions">
-          <button id="btn-export-backup" class="ghost-btn small">导出备份</button>
-          <button id="btn-import-backup" class="ghost-btn small">导入备份</button>
+          <button id="btn-export-backup" class="ghost-btn small" data-i18n="settings.exportBackup">导出备份</button>
+          <button id="btn-import-backup" class="ghost-btn small" data-i18n="settings.importBackup">导入备份</button>
+          <button id="btn-export-notes" class="ghost-btn small" data-i18n="settings.exportNotes">导出笔记</button>
           <input id="backup-file-input" type="file" accept=".json,application/json" hidden />
         </div>
-        <p class="font-tip">备份书库信息、进度、书签与设置（不含书籍文件，导入后需重新导入书籍）</p>
+        <p class="font-tip" data-i18n="settings.exportNotesTip">导出笔记：将全部书的书签与划线导出为 Markdown 文件</p>
+        <p class="font-tip" data-i18n="settings.backupTip">备份书库信息、进度、书签与设置（不含书籍文件，导入后需重新导入书籍）</p>
+      </div>
+      <div class="setting-group">
+        <label data-i18n="settings.lang">语言</label>
+        <div id="lang-seg" class="segmented">
+          <button class="seg-btn" data-lang="zh" type="button" data-i18n="settings.langZh">中文</button>
+          <button class="seg-btn" data-lang="en" type="button" data-i18n="settings.langEn">English</button>
+          <button class="seg-btn" data-lang="ja" type="button" data-i18n="settings.langJa">日本語</button>
+        </div>
       </div>
       <div class="setting-group about-block">
-        <label>关于</label>
+        <label data-i18n="settings.about">关于</label>
         <div class="about-inline">
           <div class="about-inline-logo">📖</div>
           <div class="about-inline-name">Cosmos-Reader</div>
-          <div class="about-inline-version">版本 v1.2.0</div>
-          <p class="about-inline-desc">功能完整、开箱即用的纯前端电子书阅读器，支持 EPUB / TXT / PDF / ZIP 与 Android APK 打包。数据保存在本地，离线可用。</p>
-          <a class="about-link" href="https://github.com/hiyohiyori0721/Cosmos-Reader" target="_blank" rel="noopener">GitHub 仓库 ↗</a>
+          <div class="about-inline-version" data-i18n="settings.version">版本 v1.3.0</div>
+          <p class="about-inline-desc" data-i18n="settings.aboutDesc">功能完整、开箱即用的纯前端电子书阅读器，支持 EPUB / TXT / PDF / ZIP 与 Android APK 打包。数据保存在本地，离线可用。</p>
+          <a class="about-link" href="https://github.com/hiyohiyori0721/Cosmos-Reader" target="_blank" rel="noopener" data-i18n="settings.github">GitHub 仓库 ↗</a>
           <div class="about-inline-license">MIT License</div>
         </div>
       </div>
@@ -244,28 +265,29 @@
     <div class="library-header">
       <div class="library-title">
         <svg viewBox="0 0 24 24" width="30" height="30"><path fill="currentColor" d="M4 6H2v14c0 1.1.9 2 2 2h14v-2H4zm16-4H8c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-1 9H9V9h10zm-4 4H9v-2h6zm4-8H9V5h10z"/></svg>
-        <h1>cosmos阅读器</h1>
+        <h1 data-i18n="app.name">cosmos阅读器</h1>
       </div>
       <div class="library-actions">
-        <button id="btn-library-settings" class="ghost-btn small" title="设置" aria-label="设置">
-          <span class="sort-icon">⚙</span> 设置
+        <button id="btn-library-settings" class="ghost-btn small" title="设置" aria-label="设置" data-i18n-title="common.settings" data-i18n-aria="common.settings">
+          <span class="sort-icon">⚙</span> <span data-i18n="common.settings">设置</span>
         </button>
-        <button id="btn-sort" class="ghost-btn small" title="排序方式" aria-label="排序方式">
-          <span class="sort-icon">⇅</span> 排序
+        <button id="btn-sort" class="ghost-btn small" title="排序方式" aria-label="排序方式" data-i18n-title="common.sort" data-i18n-aria="common.sort">
+          <span class="sort-icon">⇅</span> <span data-i18n="common.sort">排序</span>
         </button>
+        <input id="library-search" class="library-search" type="search" placeholder="搜索书名 / 作者" autocomplete="off" aria-label="搜索书名或作者" data-i18n-placeholder="library.searchPlaceholder" data-i18n-aria="library.searchAria" />
         <input id="file-input" type="file" accept=".epub,.txt,.pdf,.zip,application/epub+zip,text/plain,application/pdf,application/zip" hidden />
       </div>
     </div>
     <!-- 文件夹详情导航（进入文件夹后显示） -->
     <div id="folder-nav" class="folder-nav hidden">
-      <button id="btn-folder-back" class="icon-btn" title="返回书库" aria-label="返回书库">
+      <button id="btn-folder-back" class="icon-btn" title="返回书库" aria-label="返回书库" data-i18n-title="common.backToLibrary" data-i18n-aria="common.backToLibrary">
         <svg viewBox="0 0 24 24" width="20" height="20"><path fill="currentColor" d="M15.41 16.59 10.83 12l4.58-4.59L14 6l-6 6 6 6z"/></svg>
       </button>
       <span id="folder-name" class="folder-name"></span>
       <div class="folder-nav-actions">
-        <button id="btn-folder-import" class="ghost-btn small">导入到此</button>
-        <button id="btn-folder-rename" class="ghost-btn small">重命名</button>
-        <button id="btn-folder-delete" class="ghost-btn small danger">删除</button>
+        <button id="btn-folder-import" class="ghost-btn small" data-i18n="common.importHere">导入到此</button>
+        <button id="btn-folder-rename" class="ghost-btn small" data-i18n="common.rename">重命名</button>
+        <button id="btn-folder-delete" class="ghost-btn small danger" data-i18n="common.delete">删除</button>
       </div>
     </div>
     <!-- 文件夹条（书库主页显示） -->
@@ -273,28 +295,28 @@
     <div id="book-grid" class="book-grid"></div>
     <div id="empty-hint" class="empty-hint hidden">
       <div class="empty-icon">📚</div>
-      <p>书库还是空的</p>
-      <p class="empty-sub">点击右下角「＋」导入 epub / txt 小说</p>
+      <p data-i18n="library.empty">书库还是空的</p>
+      <p class="empty-sub" data-i18n="library.emptySub">点击右下角「＋」导入 epub / txt 小说</p>
     </div>
   </div>
 
   <!-- 多选批量操作栏 -->
   <div id="select-bar" class="select-bar hidden">
-    <span id="select-count" class="select-count">已选 0 本</span>
-    <button id="select-move" class="select-btn" title="移动到文件夹">📁 移动</button>
-    <button id="select-delete" class="select-btn danger" title="批量删除">🗑 删除</button>
-    <button id="select-all" class="select-btn">全选</button>
-    <button id="select-cancel" class="select-btn">取消</button>
+    <span id="select-count" class="select-count" data-i18n="select.count">已选 0 本</span>
+    <button id="select-move" class="select-btn" title="移动到文件夹" data-i18n-title="select.move" data-i18n="select.move">📁 移动</button>
+    <button id="select-delete" class="select-btn danger" title="批量删除" data-i18n-title="select.delete" data-i18n="select.delete">🗑 删除</button>
+    <button id="select-all" class="select-btn" data-i18n="select.all">全选</button>
+    <button id="select-cancel" class="select-btn" data-i18n="select.cancel">取消</button>
   </div>
 
   <!-- 右下角悬浮操作按钮（新建文件夹 / 导入小说） -->
   <div id="fab-wrap" class="fab-wrap">
     <div id="fab-actions" class="fab-actions">
       <button id="fab-new-folder" class="fab-action">
-        <span class="fab-action-icon">📁</span> 新建文件夹
+        <span class="fab-action-icon">📁</span> <span data-i18n="common.newFolder">新建文件夹</span>
       </button>
       <button id="fab-import" class="fab-action">
-        <span class="fab-action-icon">📥</span> 导入小说
+        <span class="fab-action-icon">📥</span> <span data-i18n="common.importBook">导入小说</span>
       </button>
     </div>
     <button id="fab-main" class="fab-main" aria-label="添加">＋</button>
@@ -304,7 +326,7 @@
   <div id="move-modal" class="modal-mask hidden">
     <div class="modal">
       <div class="modal-header">
-        <span>移动到文件夹</span>
+        <span data-i18n="move.title">移动到文件夹</span>
         <button id="btn-move-close" class="icon-btn" aria-label="关闭">✕</button>
       </div>
       <div id="move-list" class="move-list"></div>
@@ -315,13 +337,13 @@
   <div id="input-modal" class="modal-mask hidden">
     <div class="modal">
       <div class="modal-header">
-        <span id="input-modal-title">输入</span>
+        <span id="input-modal-title" data-i18n="input.title">输入</span>
         <button id="btn-input-close" class="icon-btn" aria-label="关闭">✕</button>
       </div>
-      <input id="input-modal-field" class="modal-input" type="text" maxlength="40" placeholder="请输入名称" />
+      <input id="input-modal-field" class="modal-input" type="text" maxlength="40" placeholder="请输入名称" data-i18n-placeholder="input.placeholder" />
       <div class="modal-actions">
-        <button id="btn-input-cancel" class="ghost-btn small">取消</button>
-        <button id="btn-input-ok" class="primary-btn small">确定</button>
+        <button id="btn-input-cancel" class="ghost-btn small" data-i18n="common.cancel">取消</button>
+        <button id="btn-input-ok" class="primary-btn small" data-i18n="common.ok">确定</button>
       </div>
     </div>
   </div>
@@ -329,11 +351,11 @@
   <!-- 确认弹窗（WebView 不支持 confirm，自建确认框） -->
   <div id="confirm-modal" class="modal-mask hidden">
     <div class="modal">
-      <div class="modal-header"><span>提示</span></div>
+      <div class="modal-header"><span data-i18n="confirm.title">提示</span></div>
       <div id="confirm-modal-text" class="confirm-text"></div>
       <div class="modal-actions">
-        <button id="btn-confirm-cancel" class="ghost-btn small">取消</button>
-        <button id="btn-confirm-ok" class="primary-btn small danger">确定</button>
+        <button id="btn-confirm-cancel" class="ghost-btn small" data-i18n="common.cancel">取消</button>
+        <button id="btn-confirm-ok" class="primary-btn small danger" data-i18n="common.ok">确定</button>
       </div>
     </div>
   </div>
@@ -343,18 +365,18 @@
     <div class="sheet">
       <div id="card-menu-title" class="sheet-title"></div>
       <button id="card-menu-info" class="sheet-item">
-        <span class="sheet-icon">ℹ️</span> 预览信息
+        <span class="sheet-icon">ℹ️</span> <span data-i18n="cardMenu.info">预览信息</span>
       </button>
       <button id="card-menu-select" class="sheet-item">
-        <span class="sheet-icon">☑</span> 多选
+        <span class="sheet-icon">☑</span> <span data-i18n="cardMenu.select">多选</span>
       </button>
       <button id="card-menu-move" class="sheet-item">
-        <span class="sheet-icon">📁</span> 移动到文件夹
+        <span class="sheet-icon">📁</span> <span data-i18n="cardMenu.move">移动到文件夹</span>
       </button>
       <button id="card-menu-delete" class="sheet-item danger">
-        <span class="sheet-icon">🗑</span> 删除小说
+        <span class="sheet-icon">🗑</span> <span data-i18n="cardMenu.delete">删除小说</span>
       </button>
-      <button id="card-menu-cancel" class="sheet-item">取消</button>
+      <button id="card-menu-cancel" class="sheet-item" data-i18n="cardMenu.cancel">取消</button>
     </div>
   </div>
 
@@ -362,24 +384,24 @@
   <div id="book-info-modal" class="modal-mask hidden">
     <div class="modal book-info-modal">
       <div class="modal-header">
-        <span>小说信息</span>
+        <span data-i18n="bookInfo.title">小说信息</span>
         <button id="btn-info-close" class="icon-btn" aria-label="关闭">✕</button>
       </div>
       <div class="book-info-body">
         <div id="book-info-cover" class="book-info-cover"></div>
         <div class="book-info-fields">
-          <div class="book-info-row"><span class="bi-label">书名</span><span id="bi-title" class="bi-value"></span></div>
-          <div class="book-info-row"><span class="bi-label">作者</span><span id="bi-author" class="bi-value"></span></div>
-          <div class="book-info-row"><span class="bi-label">类型</span><span id="bi-type" class="bi-value"></span></div>
-          <div class="book-info-row"><span class="bi-label">大小</span><span id="bi-size" class="bi-value"></span></div>
-          <div class="book-info-row"><span class="bi-label">进度</span><span id="bi-progress" class="bi-value"></span></div>
-          <div class="book-info-row"><span class="bi-label">添加时间</span><span id="bi-added" class="bi-value"></span></div>
-          <div class="book-info-row"><span class="bi-label">最近阅读</span><span id="bi-lastread" class="bi-value"></span></div>
+          <div class="book-info-row"><span class="bi-label" data-i18n="bookInfo.name">书名</span><span id="bi-title" class="bi-value"></span></div>
+          <div class="book-info-row"><span class="bi-label" data-i18n="bookInfo.author">作者</span><span id="bi-author" class="bi-value"></span></div>
+          <div class="book-info-row"><span class="bi-label" data-i18n="bookInfo.type">类型</span><span id="bi-type" class="bi-value"></span></div>
+          <div class="book-info-row"><span class="bi-label" data-i18n="bookInfo.size">大小</span><span id="bi-size" class="bi-value"></span></div>
+          <div class="book-info-row"><span class="bi-label" data-i18n="bookInfo.progress">进度</span><span id="bi-progress" class="bi-value"></span></div>
+          <div class="book-info-row"><span class="bi-label" data-i18n="bookInfo.added">添加时间</span><span id="bi-added" class="bi-value"></span></div>
+          <div class="book-info-row"><span class="bi-label" data-i18n="bookInfo.lastRead">最近阅读</span><span id="bi-lastread" class="bi-value"></span></div>
         </div>
       </div>
       <div class="modal-actions">
-        <button id="btn-info-read" class="primary-btn small">开始阅读</button>
-        <button id="btn-info-close2" class="ghost-btn small">关闭</button>
+        <button id="btn-info-read" class="primary-btn small" data-i18n="bookInfo.read">开始阅读</button>
+        <button id="btn-info-close2" class="ghost-btn small" data-i18n="bookInfo.close">关闭</button>
       </div>
     </div>
   </div>
@@ -387,28 +409,62 @@
   <!-- 排序方式选择（底部弹出） -->
   <div id="sort-menu" class="modal-mask bottom hidden">
     <div class="sheet">
-      <div class="sheet-title">排序方式</div>
-      <button class="sheet-item" data-sort="recent"><span class="sheet-icon">🕐</span> 最近添加</button>
-      <button class="sheet-item" data-sort="lastRead"><span class="sheet-icon">📖</span> 最近阅读</button>
-      <button class="sheet-item" data-sort="title"><span class="sheet-icon">🔤</span> 书名</button>
-      <button class="sheet-item" data-sort="author"><span class="sheet-icon">👤</span> 作者</button>
-      <button id="sort-menu-cancel" class="sheet-item">取消</button>
+      <div class="sheet-title" data-i18n="sort.title">排序方式</div>
+      <button class="sheet-item" data-sort="recent"><span class="sheet-icon">🕐</span> <span data-i18n="sort.recent">最近添加</span></button>
+      <button class="sheet-item" data-sort="lastRead"><span class="sheet-icon">📖</span> <span data-i18n="sort.lastRead">最近阅读</span></button>
+      <button class="sheet-item" data-sort="title"><span class="sheet-icon">🔤</span> <span data-i18n="sort.titleName">书名</span></button>
+      <button class="sheet-item" data-sort="author"><span class="sheet-icon">👤</span> <span data-i18n="sort.author">作者</span></button>
+      <button id="sort-menu-cancel" class="sheet-item" data-i18n="sort.cancel">取消</button>
     </div>
   </div>
 
   <!-- 拖拽导入遮罩 -->
   <div id="drop-overlay" class="drop-overlay hidden">
-    <div class="drop-message">松开以导入 EPUB 文件</div>
+    <div class="drop-message" data-i18n="library.drop">松开以导入 EPUB 文件</div>
   </div>
 
   <!-- 轻提示 -->
   <div id="toast" class="toast hidden"></div>
 
-  <script src="lib/jszip.min.js"></script>
-  <script src="lib/epub.min.js"></script>
-  <script src="lib/pdf.min.js"></script>
-  <script src="js/storage.js"></script>
-  <script src="js/reader.js"></script>
-  <script src="js/app.js"></script>
+  <script src="js/storage.js?v=20260825"></script>
+  <script src="js/i18n.js?v=20260825"></script>
+  <script src="js/config.js?v=20260825"></script>
+  <script src="js/utils.js?v=20260825"></script>
+  <script src="js/reader.js?v=20260825"></script>
+  <script src="js/reader-pdf.js?v=20260825"></script>
+  <script src="js/reader-txt.js?v=20260825"></script>
+  <script src="js/reader-virtual.js?v=20260825"></script>
+  <script src="js/app-state.js?v=20260825"></script>
+  <script src="js/app-tools.js?v=20260825"></script>
+  <script src="js/app-library.js?v=20260825"></script>
+  <script src="js/app-settings.js?v=20260825"></script>
+  <script src="js/app-reader.js?v=20260825"></script>
+  <script src="js/app.js?v=20260825"></script>
+  <!-- PWA：注册 Service Worker（仅 http/https；file:// 下自动跳过） -->
+  <script>
+    // PWA：注册 Service Worker（仅 http/https；file:// 下自动跳过）
+    if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('sw.js').catch(() => {});
+        // 新版本 SW 接管（skipWaiting + claim）后当前页面仍是旧代码 → 提示点击刷新
+        // 首次安装（无旧 SW）接管不提示；后续版本更新接管才提示
+        var hadController = !!navigator.serviceWorker.controller;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!hadController) { hadController = true; return; }
+          showUpdateBar();
+        });
+      });
+    }
+    // 新版本更新提示条：点击刷新到最新代码
+    function showUpdateBar() {
+      if (document.getElementById('sw-update-bar')) return;
+      var bar = document.createElement('div');
+      bar.id = 'sw-update-bar';
+      bar.textContent = '✨ 发现新版本，点击刷新';
+      bar.setAttribute('role', 'button');
+      bar.addEventListener('click', function () { location.reload(); });
+      document.body.appendChild(bar);
+    }
+  </script>
 </body>
 </html>
