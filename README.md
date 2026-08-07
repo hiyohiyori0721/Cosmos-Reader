@@ -52,7 +52,7 @@
 
 不想自己构建？从 GitHub Releases 直接下载 Android APK：
 
-- **最新版本 v1.3.1**：<https://github.com/hiyohiyori0721/Cosmos-Reader/releases/tag/v1.3.1>
+- **最新版本 v1.3.2**：<https://github.com/hiyohiyori0721/Cosmos-Reader/releases/tag/v1.3.2>
 - Releases 列表：<https://github.com/hiyohiyori0721/Cosmos-Reader/releases>
 
 ---

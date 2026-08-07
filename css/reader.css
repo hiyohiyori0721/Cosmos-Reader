@@ -247,9 +247,14 @@
   padding: 4px 10px;
   pointer-events: none;
   font-variant-numeric: tabular-nums;
+  opacity: 1;
+  transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
-/* 沉浸模式：翻页栏收起，状态贴近底部 */
-body.bars-hidden .reader-status { bottom: 14px; }
+/* 沉浸模式：隐藏状态栏，避免其半透明背景遮挡阅读内容最后一行 */
+body.bars-hidden .reader-status {
+  opacity: 0;
+  pointer-events: none;
+}
 
 /* 可视电池 */
 .status-battery {

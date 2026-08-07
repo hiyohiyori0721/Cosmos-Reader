@@ -38,6 +38,10 @@
       this._hlReflowTimer = null;
       this._jumpHlCfi = null;   // 跳转临时高亮的 cfi（用于下次跳转前清除，避免叠加）
       this._suppressProgress = false; // 临时跳转查看期间不更新阅读进度
+      this._autoNextPending = false; // 滚动到底自动进下一章：等待确认中
+      this._autoNextTimer = null;
+      this._autoPrevPending = false; // 滚动到顶自动返回上一章：等待确认中
+      this._autoPrevTimer = null;
     }
 
     /* ================= 打开 ================= */
@@ -128,7 +132,19 @@
         this._applyHls();
         this._bindScrolledProgress();
         this._bindEpubLinks();
+        this._fixScrolledViewHeight();
       });
+      // 滚动模式：epub.js 章节切换（rendition.next/prev）只触发 relocated 而不触发
+      // rendered，且 view 每次 reframe 会 emit resized；这里持续监听以便修正 iframe 高度，
+      // 消除章节末尾空白。
+      try {
+        const mgr = r.manager;
+        if (mgr && typeof mgr.on === 'function') {
+          mgr.on('resized', () => this._fixScrolledViewHeight());
+          mgr.on('added', () => this._fixScrolledViewHeight());
+          mgr.on('appended', () => this._fixScrolledViewHeight());
+        }
+      } catch (_) {}
       r.on('keyup', (e) => this._onKey(e));
       r.on('selected', (cfi) => {
         if (this.onSelectedText && cfi) {
@@ -142,9 +158,55 @@
       }));
     }
 
+    /**
+     * 修正滚动模式下 iframe 高度，消除章节末尾大片空白。
+     * epub.js 的 textHeight() 用 range.getBoundingClientRect().bottom（绝对坐标，
+     * 含 body 顶部偏移——每章 H1 的 margin-top 约 24px），导致 iframe 比内容高，
+     * 每章末尾多出空白。这里按「内容实际高度 = bottom - bodyTop」重设 iframe 高度。
+     */
+    _fixScrolledViewHeight() {
+      if (this.mode !== 'epub' || !this.rendition || this.settings.flow !== 'scrolled') return;
+      // 单次修正逻辑：把当前 view 的 iframe 高度改为「内容实际高度」
+      const applyOnce = () => {
+        if (this.mode !== 'epub' || !this.rendition || this.settings.flow !== 'scrolled') return;
+        try {
+          const view = this.rendition.manager && this.rendition.manager.views && this.rendition.manager.views.first();
+          if (!view || !view.reframe) return;
+          const doc = view.contents && view.contents.document;
+          if (!doc || !doc.body) return;
+          const range = doc.createRange();
+          range.selectNodeContents(doc.body);
+          const rect = range.getBoundingClientRect();
+          const bodyTop = doc.body.getBoundingClientRect().top;
+          // 内容实际高度（去掉 body 顶部偏移）；至少保留一屏高度避免为 0
+          const h = Math.max(1, Math.round(rect.bottom - bodyTop));
+          const w = view.width();
+          if (Math.abs(view.height() - h) > 1) view.reframe(w, h);
+        } catch (_) {}
+      };
+      // epub.js 在 rendered 后可能多次异步重算高度（size/reframe），
+      // 用「字体 ready + 双 rAF + 若干次延迟」持续修正，直到高度稳定。
+      const docs = [document];
+      try {
+        this.rendition.getContents().forEach((c) => { if (c && c.document) docs.push(c.document); });
+      } catch (_) {}
+      const waits = docs.map((d) => (d.fonts && d.fonts.ready) ? d.fonts.ready.catch(() => {}) : Promise.resolve());
+      Promise.all(waits).then(() => {
+        const step = (n) => {
+          if (n <= 0) return;
+          const rafFix = () => {
+            applyOnce();
+            setTimeout(() => step(n - 1), 150);
+          };
+          if (typeof requestAnimationFrame === 'function') requestAnimationFrame(rafFix);
+          else setTimeout(rafFix, 0);
+        };
+        step(4);
+      });
+    }
+
     /** 应用 EPUB 左右留白（基于可见容器宽度换算固定 px，避免分页多列布局下 vw 循环放大） */
-    _applyEpubMargin() {
-      if (this.mode !== 'epub' || !this.el) return;
+    _applyEpubMargin() {      if (this.mode !== 'epub' || !this.el) return;
       try {
         const px = this._marginPx(this.settings.margin);
         this.el.querySelectorAll('iframe').forEach((iframe) => {
@@ -184,7 +246,7 @@
       // 若把 body padding 改成 0，实际列宽变 375，列占位 375+30=405≠375，每翻一页错位 30px（文字错位）。
       // 因此这里保持 body padding=0 的同时把 column-gap 也设为 0：
       // 实际列宽=375、gap=0 → 列占位 375 = delta，翻页对齐。
-      // 留白通过给块级内容加左右 margin 实现，不改变列布局。
+      // 横排留白通过给块级内容加左右 margin 实现，不改变列布局。
       const sel = 'p, div, h1, h2, h3, h4, h5, h6, li, blockquote, dl, dd, ul, ol, section, article, figure, pre, span, td, th';
       style.textContent =
         sel + ' { margin-left: ' + px + 'px !important; margin-right: ' + px + 'px !important; tab-size: 2; overflow-wrap: anywhere; }\n' +
@@ -263,6 +325,8 @@
           e.preventDefault();
           this._wheelAcc = (this._wheelAcc || 0) + e.deltaY;
           if (Math.abs(this._wheelAcc) >= 80) {
+            // 滚轮保持通用方向：向下 = 下一页，向上 = 上一页（不随竖排反转；
+            // 竖排从右往左只影响点击区域/方向键，滚轮是通用翻页操作）
             if (this._wheelAcc > 0) this.next();
             else this.prev();
             this._wheelAcc = 0;
@@ -292,6 +356,8 @@
         const dy = t.clientY - sy;
         sx = sy = null;
         if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+          // 触摸滑动保持通用习惯：左滑 = 下一页，右滑 = 上一页（不随竖排反转；
+          // 滑动是肌肉记忆操作，竖排从右往左只影响点击区域/方向键）
           if (dx < 0) this.next();
           else this.prev();
         }
@@ -501,7 +567,9 @@
         else this._busy = false;
         return;
       }
-      c.scrollBy({ top: c.clientHeight * 0.9 * dir, behavior: 'smooth' });
+      // 用 _scrollByCompat（smooth + setTimeout 兜底）而不是原生 scrollBy smooth：
+      // rAF 冻结环境下 smooth 滚动不执行，会导致滚动不到位、无法滚到章节底部进入下一章
+      this._scrollByCompat(c, c.scrollTop + c.clientHeight * 0.9 * dir);
     }
 
     /** 连续滚动（EPUB）模式：绑定滚动事件以更新阅读进度 */
@@ -509,9 +577,73 @@
       const c = this.el.querySelector('.epub-container');
       if (!c || c._readerScrollBound) return;
       c._readerScrollBound = true;
-      c.addEventListener('scroll', () => this._updateScrolledProgress());
+      const onScroll = () => {
+        this._updateScrolledProgress();
+        this._maybeAutoNextChapter();
+        this._maybeAutoPrevChapter();
+      };
+      c.addEventListener('scroll', onScroll);
       // 打开书后主动刷新一次进度（scrolled 模式下 relocated 可能不触发）
       setTimeout(() => this._updateScrolledProgress(), 500);
+    }
+
+    /** 滚动模式：滚动到底部时自动进入下一章（模拟 continuous 模式体验） */
+    _maybeAutoNextChapter() {
+      if (this.mode !== 'epub' || !this.rendition || this.settings.flow !== 'scrolled') return;
+      if (this._busy || this._autoNextPending) return;
+      const c = this.el.querySelector('.epub-container');
+      if (!c) return;
+      const max = c.scrollHeight - c.clientHeight;
+      if (max <= 0) return; // 无滚动空间（内容不足一屏），由按钮/触摸翻页处理
+      const atEnd = c.scrollTop >= max - 8;
+      if (!atEnd) return;
+      // 滚动到底：短暂停留后进入下一章，避免滚动回弹/惯性误跳
+      this._autoNextPending = true;
+      clearTimeout(this._autoNextTimer);
+      this._autoNextTimer = setTimeout(() => {
+        this._autoNextPending = false;
+        const c2 = this.el.querySelector('.epub-container');
+        if (!c2 || this._busy) return;
+        const max2 = c2.scrollHeight - c2.clientHeight;
+        if (max2 <= 0 || c2.scrollTop < max2 - 8) return; // 已滚离底部，不跳
+        const last = this.rendition.manager && this.rendition.manager.views && this.rendition.manager.views.last();
+        const nextSection = last && last.section && last.section.next ? last.section.next() : null;
+        if (!nextSection) return; // 已是最后一章
+        this._busy = true;
+        const p = this.rendition.next();
+        if (p && p.catch) p.catch(() => {});
+        if (p && p.finally) p.finally(() => { this._busy = false; });
+        else this._busy = false;
+      }, 350);
+    }
+
+    /** 滚动模式：滚动到顶部时自动返回上一章（模拟 continuous 模式体验） */
+    _maybeAutoPrevChapter() {
+      if (this.mode !== 'epub' || !this.rendition || this.settings.flow !== 'scrolled') return;
+      if (this._busy || this._autoPrevPending) return;
+      const c = this.el.querySelector('.epub-container');
+      if (!c) return;
+      const max = c.scrollHeight - c.clientHeight;
+      if (max <= 0) return; // 无滚动空间（内容不足一屏），由按钮/触摸翻页处理
+      const atTop = c.scrollTop <= 8;
+      if (!atTop) return;
+      // 滚动到顶：短暂停留后返回上一章，避免滚动回弹/惯性误跳
+      this._autoPrevPending = true;
+      clearTimeout(this._autoPrevTimer);
+      this._autoPrevTimer = setTimeout(() => {
+        this._autoPrevPending = false;
+        const c2 = this.el.querySelector('.epub-container');
+        if (!c2 || this._busy) return;
+        if (c2.scrollTop > 8) return; // 已滚离顶部，不跳
+        const first = this.rendition.manager && this.rendition.manager.views && this.rendition.manager.views.first();
+        const prevSection = first && first.section && first.section.prev ? first.section.prev() : null;
+        if (!prevSection) return; // 已是第一章
+        this._busy = true;
+        const p = this.rendition.prev();
+        if (p && p.catch) p.catch(() => {});
+        if (p && p.finally) p.finally(() => { this._busy = false; });
+        else this._busy = false;
+      }, 350);
     }
 
     _updateScrolledProgress() {
@@ -1118,8 +1250,7 @@
         if (this.txt) this.txt.content.style.fontFamily = res ? res.family : '';
         if (this.txt && this.txt.virtual) this._rebuildTxtVirtualLayout();
         return;
-      }
-      if (this.rendition && fam !== 'default') {
+      }      if (this.rendition && fam !== 'default') {
         try {
           if (res && res.url) this._applyEpubFont();
           else if (res) this.rendition.themes.font(res.family);
@@ -1188,6 +1319,10 @@
       this._hlList = [];
       if (this._hlReflowTimer) { clearTimeout(this._hlReflowTimer); this._hlReflowTimer = null; }
       this._hlNeedsReflow = false;
+      if (this._autoNextTimer) { clearTimeout(this._autoNextTimer); this._autoNextTimer = null; }
+      this._autoNextPending = false;
+      if (this._autoPrevTimer) { clearTimeout(this._autoPrevTimer); this._autoPrevTimer = null; }
+      this._autoPrevPending = false;
       this.currentCfi = null;
     }
   }
